@@ -1,16 +1,16 @@
-import React, { useEffect, useCallback, useMemo } from 'react';
+import React, { useEffect, useCallback, useMemo, useRef } from 'react';
 import { COLORS } from '../constants/colors';
+import type { Patient } from '../types/patient';
 import useAudioCapture from '../hooks/useAudioCapture';
 import useMedASRTranscription from '../hooks/useMedASRTranscription';
 import useSOAPGenerator from '../hooks/useSOAPGenerator';
 import ScribingSession from '../components/scribing/ScribingSession';
 import SOAPReviewScreen from '../components/scribing/SOAPReviewScreen';
 import { createRepository } from '../services/createRepository';
-import { MOCK_PATIENTS } from '../data/mockPatients';
 
 /**
  * Scribing screen — orchestrates the full scribing pipeline:
- * 1. Load Whisper model
+ * 1. Load ASR model
  * 2. Record audio → live transcription
  * 3. Stop → generate SOAP via AI provider
  * 4. Review/edit SOAP → approve → save to patient record
@@ -28,6 +28,7 @@ const ScribingScreen: React.FC<{
     onComplete: () => void;
 }> = ({ patientId, onBack, onComplete }) => {
     const [phase, setPhase] = React.useState<ScribingPhase>('recording');
+    const [patient, setPatient] = React.useState<Patient | null>(null);
     const repository = useMemo(() => createRepository(), []);
 
     // Hooks
@@ -35,22 +36,51 @@ const ScribingScreen: React.FC<{
     const transcription = useMedASRTranscription();
     const soapGenerator = useSOAPGenerator();
 
-    // Build patient context for SOAP generation
-    const patient = MOCK_PATIENTS.find(p => p.id === patientId);
-    const patientContext = patient
-        ? `Name: ${patient.name}, Age: ${patient.age}, Sex: ${patient.sex}
+    // Track whether we're waiting for final transcription before generating SOAP
+    const pendingSOAPRef = useRef(false);
+
+    // Load patient from repository (not from mock data directly)
+    useEffect(() => {
+        repository.getPatientById(patientId).then(p => setPatient(p ?? null));
+    }, [repository, patientId]);
+
+    // Build patient context string for SOAP generation
+    const patientContext = useMemo(() => {
+        if (!patient) return `Patient ID: ${patientId}`;
+        return `Name: ${patient.name}, Age: ${patient.age}, Sex: ${patient.sex}
 Diagnosis: ${patient.diagnosis}
 Day of Stay: ${patient.dayOfStay}
 Active Problems: ${patient.problems.join('; ')}
 Current Medications: ${patient.medications.filter(m => m.isActive).map(m => `${m.name} ${m.dose} ${m.route}`).join('; ')}
-Latest Vitals: HR ${patient.vitals.heartRate}, BP ${patient.vitals.systolicBP}/${patient.vitals.diastolicBP}, RR ${patient.vitals.respirationRate}, SpO2 ${patient.vitals.spO2}%, Temp ${patient.vitals.temperature}°C, Consciousness: ${patient.vitals.consciousness}`
-        : `Patient ID: ${patientId}`;
+Latest Vitals: HR ${patient.vitals.heartRate}, BP ${patient.vitals.systolicBP}/${patient.vitals.diastolicBP}, RR ${patient.vitals.respirationRate}, SpO2 ${patient.vitals.spO2}%, Temp ${patient.vitals.temperature}°C, Consciousness: ${patient.vitals.consciousness}`;
+    }, [patient, patientId]);
 
     // Load model on mount
     useEffect(() => {
         transcription.loadModel();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // FIX: React to transcript completion instead of using setTimeout + stale closure.
+    // When captureState becomes 'stopped' and we have a transcript, generate SOAP.
+    useEffect(() => {
+        if (
+            pendingSOAPRef.current &&
+            audioCapture.captureState === 'stopped' &&
+            !transcription.isTranscribing &&
+            transcription.fullTranscript
+        ) {
+            pendingSOAPRef.current = false;
+            soapGenerator.generateSOAP(transcription.fullTranscript, patientContext);
+            setPhase('review');
+        }
+    }, [
+        audioCapture.captureState,
+        transcription.isTranscribing,
+        transcription.fullTranscript,
+        soapGenerator,
+        patientContext,
+    ]);
 
     const handleStart = useCallback(() => {
         audioCapture.startCapture((chunk) => {
@@ -71,15 +101,9 @@ Latest Vitals: HR ${patient.vitals.heartRate}, BP ${patient.vitals.systolicBP}/$
         if (fullAudio) {
             transcription.finalizeTranscription(fullAudio);
         }
-        // After finalization, generate SOAP
-        setTimeout(() => {
-            const transcript = transcription.fullTranscript;
-            if (transcript) {
-                soapGenerator.generateSOAP(transcript, patientContext);
-                setPhase('review');
-            }
-        }, 1500); // Wait for final transcription
-    }, [audioCapture, transcription, soapGenerator, patientContext]);
+        // Signal that we want SOAP generation once transcript is ready
+        pendingSOAPRef.current = true;
+    }, [audioCapture, transcription]);
 
     const handleApprove = useCallback(async () => {
         if (!soapGenerator.soapNote) return;
@@ -102,6 +126,7 @@ Latest Vitals: HR ${patient.vitals.heartRate}, BP ${patient.vitals.systolicBP}/$
         soapGenerator.reset();
         audioCapture.resetCapture();
         transcription.reset();
+        pendingSOAPRef.current = false;
         setPhase('recording');
     }, [soapGenerator, audioCapture, transcription]);
 
