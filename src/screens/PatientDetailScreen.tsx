@@ -19,7 +19,8 @@ const PatientDetailScreen: React.FC<{
     patient: Patient;
     onBack: () => void;
     onStartScribing: () => void;
-}> = ({ patient, onBack, onStartScribing }) => {
+    onWriteNote: () => void;
+}> = ({ patient, onBack, onStartScribing, onWriteNote }) => {
     return (
         <div style={{ maxWidth: '800px', margin: '0 auto', fontFamily: 'system-ui, sans-serif', paddingBottom: '80px', backgroundColor: COLORS.bgSubtle, minHeight: '100vh' }}>
             {/* Top Navigation */}
@@ -43,7 +44,28 @@ const PatientDetailScreen: React.FC<{
             </div>
 
             {/* Bottom Floating Action Area */}
-            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.surface, borderTop: `1px solid ${COLORS.borderLight}`, padding: '16px 24px', display: 'flex', justifyContent: 'center', boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.05)', zIndex: 20 }}>
+            <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.surface, borderTop: `1px solid ${COLORS.borderLight}`, padding: '14px 24px', display: 'flex', justifyContent: 'center', gap: '12px', boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.05)', zIndex: 20 }}>
+                <button
+                    onClick={onWriteNote}
+                    style={{
+                        backgroundColor: COLORS.surface,
+                        color: COLORS.brand,
+                        border: `2px solid ${COLORS.brand}`,
+                        borderRadius: '24px',
+                        padding: '11px 24px',
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'background-color 0.15s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = COLORS.brandSubtle; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = COLORS.surface; }}
+                >
+                    <span style={{ fontSize: '18px' }}>✍️</span> Write Note
+                </button>
                 <button
                     onClick={onStartScribing}
                     style={{
@@ -51,20 +73,20 @@ const PatientDetailScreen: React.FC<{
                         color: COLORS.surface,
                         border: 'none',
                         borderRadius: '24px',
-                        padding: '12px 32px',
-                        fontSize: '16px',
+                        padding: '12px 24px',
+                        fontSize: '15px',
                         fontWeight: 600,
                         cursor: 'pointer',
                         boxShadow: `0 4px 6px ${COLORS.brandShadow}`,
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '8px',
+                        gap: '6px',
                         transition: 'background-color 0.2s, transform 0.1s'
                     }}
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = COLORS.brandDark; e.currentTarget.style.transform = 'scale(1.02)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = COLORS.brand; e.currentTarget.style.transform = 'scale(1)'; }}
                 >
-                    <span style={{ fontSize: '20px' }}>🎙️</span> Start AI Scribing
+                    <span style={{ fontSize: '18px' }}>🎙️</span> AI Scribing
                 </button>
             </div>
         </div>

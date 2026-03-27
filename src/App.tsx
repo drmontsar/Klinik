@@ -4,6 +4,7 @@ import { createRepository } from './services/createRepository';
 import WardListScreen from './screens/WardListScreen';
 import PatientDetailScreen from './screens/PatientDetailScreen';
 import ScribingScreen from './screens/ScribingScreen';
+import NoteEntryScreen from './screens/NoteEntryScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import AmendmentScreenPage from './screens/AmendmentScreen';
 
@@ -14,7 +15,7 @@ import AmendmentScreenPage from './screens/AmendmentScreen';
  */
 
 /** All possible application screens */
-type Screen = 'list' | 'detail' | 'scribing' | 'orders' | 'amend';
+type Screen = 'list' | 'detail' | 'scribing' | 'typed-note' | 'orders' | 'amend';
 
 function App() {
   const repository = useMemo(() => createRepository(), []);
@@ -52,6 +53,13 @@ function App() {
   };
 
   /**
+   * Navigate to the typed note entry screen
+   */
+  const handleWriteNote = () => {
+    setCurrentScreen('typed-note');
+  };
+
+  /**
    * Navigate back to the patient detail screen (re-fetches data to pick up new notes)
    */
   const handleBackToDetail = () => {
@@ -84,6 +92,7 @@ function App() {
             patient={selectedPatient}
             onBack={handleBackToList}
             onStartScribing={handleStartScribing}
+            onWriteNote={handleWriteNote}
           />
         );
 
@@ -95,6 +104,19 @@ function App() {
         return (
           <ScribingScreen
             patientId={selectedPatientId}
+            onBack={handleBackToDetail}
+            onComplete={handleBackToDetail}
+          />
+        );
+
+      case 'typed-note':
+        if (!selectedPatient) {
+          setCurrentScreen('list');
+          return null;
+        }
+        return (
+          <NoteEntryScreen
+            patient={selectedPatient}
             onBack={handleBackToDetail}
             onComplete={handleBackToDetail}
           />

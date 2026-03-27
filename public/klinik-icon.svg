@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#0D9488"/>
+  <!-- K letter -->
+  <text x="100" y="370" font-family="system-ui, -apple-system, sans-serif" font-size="320" font-weight="700" fill="white">K</text>
+  <!-- Cross / medical indicator -->
+  <rect x="350" y="80" width="48" height="140" rx="12" fill="white" opacity="0.9"/>
+  <rect x="302" y="128" width="144" height="48" rx="12" fill="white" opacity="0.9"/>
+</svg>
