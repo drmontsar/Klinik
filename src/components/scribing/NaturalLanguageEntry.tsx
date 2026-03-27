@@ -1,6 +1,5 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { COLORS } from '../../constants/colors';
-import ClinicalKeyboard from '../shared/ClinicalKeyboard';
 
 /**
  * Natural Language to AI entry mode.
@@ -28,16 +27,6 @@ const NaturalLanguageEntry: React.FC<NaturalLanguageEntryProps> = ({
 }) => {
   const [text, setText] = useState('');
   const [showExample, setShowExample] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  const handleInsert = (term: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart ?? text.length;
-    const next = text.slice(0, start) + term + text.slice(start);
-    setText(next);
-    setTimeout(() => el.setSelectionRange(start + term.length, start + term.length), 0);
-  };
 
   const handleGenerate = () => {
     if (text.trim()) onGenerate(text.trim());
@@ -87,7 +76,6 @@ const NaturalLanguageEntry: React.FC<NaturalLanguageEntryProps> = ({
 
       {/* Text input */}
       <textarea
-        ref={textareaRef}
         value={text}
         onChange={e => setText(e.target.value)}
         placeholder="Type your clinical note here..."
@@ -111,9 +99,6 @@ const NaturalLanguageEntry: React.FC<NaturalLanguageEntryProps> = ({
           ⚠️ {error}
         </div>
       )}
-
-      {/* Clinical keyboard */}
-      <ClinicalKeyboard onInsert={handleInsert} />
 
       {/* Generate button */}
       <button

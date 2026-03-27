@@ -6,3 +6,4 @@ export { default as TemplateEntry } from './TemplateEntry';
 export { default as NaturalLanguageEntry } from './NaturalLanguageEntry';
 export { default as PlanTagInput } from './PlanTagInput';
 export { default as SectionHeader } from './SectionHeader';
+export { default as TemplateField } from './TemplateField';

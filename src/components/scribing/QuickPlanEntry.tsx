@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { COLORS } from '../../constants/colors';
-import ClinicalKeyboard from '../shared/ClinicalKeyboard';
 import PlanTagInput from './PlanTagInput';
+import TemplateField from './TemplateField';
 import { assembleQuickPlanNote } from '../../utils/assembleSOAPNote';
 import type { PlanFields } from '../../utils/assembleSOAPNote';
 import type { StructuredSOAPNote } from '../../types/clinical';
@@ -9,6 +9,7 @@ import type { StructuredSOAPNote } from '../../types/clinical';
 /**
  * Quick Plan entry mode — fastest typed note path.
  * Doctor enters assessment + plan items only. No full SOAP required.
+ * Each field shows inline clinical suggestions when focused.
  * Delegates note assembly to assembleQuickPlanNote utility.
  * @param onSubmit - Called with assembled SOAP note when ready to review
  */
@@ -30,33 +31,12 @@ const QuickPlanEntry: React.FC<QuickPlanEntryProps> = ({ onSubmit }) => {
   const [plan, setPlan] = useState<PlanFields>({
     investigations: [], medications: [], nursing: [], followUp: [],
   });
-  const [activePlanField, setActivePlanField] = useState<PlanField>('investigations');
-  const assessmentRef = useRef<HTMLTextAreaElement>(null);
   const planInputRefs = useRef<Record<PlanField, React.RefObject<HTMLInputElement | null>>>({
     investigations: React.createRef<HTMLInputElement>(),
     medications: React.createRef<HTMLInputElement>(),
     nursing: React.createRef<HTMLInputElement>(),
     followUp: React.createRef<HTMLInputElement>(),
   });
-
-  // CLINICAL: Insert keyboard term at cursor in whichever field is active
-  const handleInsert = (text: string) => {
-    const el = assessmentRef.current;
-    if (el && document.activeElement === el) {
-      const start = el.selectionStart ?? assessment.length;
-      setAssessment(assessment.slice(0, start) + text + assessment.slice(start));
-      setTimeout(() => el.setSelectionRange(start + text.length, start + text.length), 0);
-    } else {
-      const inputEl = planInputRefs.current[activePlanField].current;
-      if (inputEl) {
-        inputEl.focus();
-        const pos = inputEl.selectionStart ?? inputEl.value.length;
-        const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')?.set;
-        setter?.call(inputEl, inputEl.value.slice(0, pos) + text + inputEl.value.slice(pos));
-        inputEl.dispatchEvent(new Event('input', { bubbles: true }));
-      }
-    }
-  };
 
   const handleSubmit = () => {
     onSubmit(assembleQuickPlanNote(assessment, plan));
@@ -67,30 +47,22 @@ const QuickPlanEntry: React.FC<QuickPlanEntryProps> = ({ onSubmit }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
-      {/* Assessment */}
-      <div>
-        <label style={{ fontSize: '13px', fontWeight: 600, color: COLORS.textSecondary, display: 'block', marginBottom: '6px' }}>
-          🧠 Assessment / Primary Diagnosis
-        </label>
-        <textarea
-          ref={assessmentRef}
-          value={assessment}
-          onChange={e => setAssessment(e.target.value)}
-          onFocus={() => setActivePlanField('investigations')}
-          placeholder="e.g. Post-Whipple Day 2 — improving. Query anastomotic leak resolving."
-          rows={3}
-          style={{
-            width: '100%', padding: '10px 12px', border: `1px solid ${COLORS.borderLight}`,
-            borderRadius: '10px', fontSize: '14px', lineHeight: '1.6', color: COLORS.text,
-            fontFamily: 'inherit', resize: 'vertical', backgroundColor: COLORS.surface,
-            boxSizing: 'border-box',
-          }}
-        />
-      </div>
+      {/* Assessment — inline suggestions for clinical assessment terms */}
+      <TemplateField
+        label="🧠 Assessment / Primary Diagnosis"
+        value={assessment}
+        onChange={setAssessment}
+        category="assessment"
+        multiline
+        rows={3}
+        placeholder="e.g. Post-Whipple Day 2 — improving. Query anastomotic leak resolving."
+        color={COLORS.brand}
+        bg={COLORS.card}
+      />
 
-      {/* Plan sections */}
+      {/* Plan sections — each has inline suggestions via PlanTagInput */}
       {PLAN_SECTIONS.map(sec => (
-        <div key={sec.key} onClick={() => setActivePlanField(sec.key)}>
+        <div key={sec.key}>
           <label style={{ fontSize: '13px', fontWeight: 600, color: sec.color, display: 'block', marginBottom: '6px' }}>
             {sec.label}
             <span style={{ fontWeight: 400, color: COLORS.textDim, marginLeft: '6px' }}>— press Enter to add</span>
@@ -104,12 +76,11 @@ const QuickPlanEntry: React.FC<QuickPlanEntryProps> = ({ onSubmit }) => {
             color={sec.color}
             bg={sec.bg}
             placeholder={sec.placeholder}
+            category={sec.key}
             inputRef={planInputRefs.current[sec.key]}
           />
         </div>
       ))}
-
-      <ClinicalKeyboard onInsert={handleInsert} />
 
       <button
         onClick={handleSubmit}

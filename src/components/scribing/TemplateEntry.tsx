@@ -1,13 +1,14 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { COLORS } from '../../constants/colors';
-import ClinicalKeyboard from '../shared/ClinicalKeyboard';
 import SectionHeader from './SectionHeader';
+import TemplateField from './TemplateField';
+import PlanTagInput from './PlanTagInput';
 import { assembleTemplateNote } from '../../utils/assembleSOAPNote';
 import type { StructuredSOAPNote } from '../../types/clinical';
 
 /**
  * Standard Template entry mode — full SOAP form.
- * Doctor fills each SOAP section including vitals as numeric inputs.
+ * Each field shows inline clinical suggestions when focused.
  * Delegates note assembly to assembleTemplateNote utility.
  * @param onSubmit - Called with assembled SOAP note when ready to review
  */
@@ -19,10 +20,6 @@ const inputStyle: React.CSSProperties = {
   width: '100%', padding: '9px 12px', border: `1px solid ${COLORS.borderLight}`,
   borderRadius: '8px', fontSize: '14px', color: COLORS.text,
   backgroundColor: COLORS.surface, fontFamily: 'inherit', boxSizing: 'border-box',
-};
-
-const areaStyle: React.CSSProperties = {
-  ...inputStyle, resize: 'vertical', lineHeight: '1.6', minHeight: '80px',
 };
 
 const TemplateEntry: React.FC<TemplateEntryProps> = ({ onSubmit }) => {
@@ -41,59 +38,22 @@ const TemplateEntry: React.FC<TemplateEntryProps> = ({ onSubmit }) => {
   // Assessment
   const [diagnosis, setDiagnosis] = useState('');
   const [reasoning, setReasoning] = useState('');
-  // Plan
-  const [investigations, setInvestigations] = useState('');
-  const [medications, setMedications] = useState('');
-  const [nursing, setNursing] = useState('');
-  const [followUp, setFollowUp] = useState('');
-
-  // Track active field for ClinicalKeyboard insertion
-  const activeRef = useRef<HTMLTextAreaElement | HTMLInputElement | null>(null);
-  const [activeField, setActiveField] = useState<string>('chiefComplaint');
-
-  const setterMap: Record<string, React.Dispatch<React.SetStateAction<string>>> = {
-    chiefComplaint: setChiefComplaint, symptoms: setSymptoms, findings: setFindings,
-    diagnosis: setDiagnosis, reasoning: setReasoning, investigations: setInvestigations,
-    medications: setMedications, nursing: setNursing, followUp: setFollowUp,
-  };
-
-  // CLINICAL: Insert keyboard term at cursor position in the focused field
-  const handleInsert = (text: string) => {
-    const setter = setterMap[activeField];
-    if (!setter) return;
-    const el = activeRef.current;
-    if (el && 'selectionStart' in el) {
-      const start = el.selectionStart ?? 0;
-      const next = el.value.slice(0, start) + text + el.value.slice(start);
-      setter(next);
-      setTimeout(() => (el as HTMLInputElement).setSelectionRange(start + text.length, start + text.length), 0);
-    } else {
-      setter(prev => prev + text);
-    }
-  };
-
-  const refs = {
-    chiefComplaint: useRef<HTMLInputElement>(null),
-    symptoms: useRef<HTMLTextAreaElement>(null),
-    findings: useRef<HTMLTextAreaElement>(null),
-    diagnosis: useRef<HTMLInputElement>(null),
-    reasoning: useRef<HTMLTextAreaElement>(null),
-    investigations: useRef<HTMLTextAreaElement>(null),
-    medications: useRef<HTMLTextAreaElement>(null),
-    nursing: useRef<HTMLTextAreaElement>(null),
-    followUp: useRef<HTMLTextAreaElement>(null),
-  };
-
-  const fp = (fieldName: string, ref: React.RefObject<any>) => ({
-    ref, onFocus: () => { setActiveField(fieldName); activeRef.current = ref.current; },
-  });
+  // Plan — tag arrays
+  const [investigations, setInvestigations] = useState<string[]>([]);
+  const [medications, setMedications] = useState<string[]>([]);
+  const [nursing, setNursing] = useState<string[]>([]);
+  const [followUp, setFollowUp] = useState<string[]>([]);
 
   const handleSubmit = () => {
     onSubmit(assembleTemplateNote({
       chiefComplaint, symptoms, painScore,
       temp, hr, sbp, dbp, spo2, rr, findings,
       diagnosis, reasoning,
-      investigations, medications, nursing, followUp,
+      // Join tag arrays back to newline-delimited strings for assembler
+      investigations: investigations.join('\n'),
+      medications: medications.join('\n'),
+      nursing: nursing.join('\n'),
+      followUp: followUp.join('\n'),
     }));
   };
 
@@ -106,16 +66,25 @@ const TemplateEntry: React.FC<TemplateEntryProps> = ({ onSubmit }) => {
       <div style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.borderLight}`, borderRadius: '12px', padding: '16px' }}>
         <SectionHeader icon="🗣️" label="Subjective" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div>
-            <label style={{ fontSize: '12px', color: COLORS.textMuted, display: 'block', marginBottom: '4px' }}>Chief Complaint</label>
-            <input value={chiefComplaint} onChange={e => setChiefComplaint(e.target.value)} placeholder="e.g. Pain at surgical site, nausea" style={inputStyle} {...fp('chiefComplaint', refs.chiefComplaint)} />
-          </div>
-          <div>
-            <label style={{ fontSize: '12px', color: COLORS.textMuted, display: 'block', marginBottom: '4px' }}>Symptoms (comma-separated)</label>
-            <textarea value={symptoms} onChange={e => setSymptoms(e.target.value)} placeholder="e.g. Pain, Nausea, Fever, Rigors" rows={2} style={areaStyle} {...fp('symptoms', refs.symptoms)} />
-          </div>
+          <TemplateField
+            label="Chief Complaint"
+            value={chiefComplaint}
+            onChange={setChiefComplaint}
+            category="symptoms"
+            placeholder="e.g. Pain at surgical site, nausea"
+          />
+          <TemplateField
+            label="Symptoms"
+            value={symptoms}
+            onChange={setSymptoms}
+            category="symptoms"
+            multiline
+            rows={2}
+            placeholder="e.g. Pain, Nausea, Fever, Rigors"
+          />
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <label style={{ fontSize: '12px', color: COLORS.textMuted, whiteSpace: 'nowrap' }}>Pain Score (0–10)</label>
+            {/* SAFETY: type="number" enforces numeric-only vital sign input */}
             <input type="number" min={0} max={10} value={painScore} onChange={e => setPainScore(e.target.value)} placeholder="—" style={{ ...inputStyle, width: '80px' }} />
           </div>
         </div>
@@ -140,24 +109,37 @@ const TemplateEntry: React.FC<TemplateEntryProps> = ({ onSubmit }) => {
             </div>
           ))}
         </div>
-        <div>
-          <label style={{ fontSize: '12px', color: COLORS.textMuted, display: 'block', marginBottom: '4px' }}>Examination Findings</label>
-          <textarea value={findings} onChange={e => setFindings(e.target.value)} placeholder="e.g. Abdomen soft, non-tender. Wound clean. Drain insitu." rows={3} style={areaStyle} {...fp('findings', refs.findings)} />
-        </div>
+        <TemplateField
+          label="Examination Findings"
+          value={findings}
+          onChange={setFindings}
+          category="examination"
+          multiline
+          rows={3}
+          placeholder="e.g. Abdomen soft, non-tender. Wound clean. Drain insitu."
+        />
       </div>
 
       {/* Assessment */}
       <div style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.borderLight}`, borderRadius: '12px', padding: '16px' }}>
         <SectionHeader icon="🧠" label="Assessment" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          <div>
-            <label style={{ fontSize: '12px', color: COLORS.textMuted, display: 'block', marginBottom: '4px' }}>Primary Diagnosis</label>
-            <input value={diagnosis} onChange={e => setDiagnosis(e.target.value)} placeholder="e.g. Post-Whipple Day 2 — improving" style={inputStyle} {...fp('diagnosis', refs.diagnosis)} />
-          </div>
-          <div>
-            <label style={{ fontSize: '12px', color: COLORS.textMuted, display: 'block', marginBottom: '4px' }}>Clinical Reasoning</label>
-            <textarea value={reasoning} onChange={e => setReasoning(e.target.value)} placeholder="e.g. Fever and raised CRP — continue antibiotics. Drain output reducing — suggests leak resolving." rows={3} style={areaStyle} {...fp('reasoning', refs.reasoning)} />
-          </div>
+          <TemplateField
+            label="Primary Diagnosis"
+            value={diagnosis}
+            onChange={setDiagnosis}
+            category="assessment"
+            placeholder="e.g. Post-Whipple Day 2 — improving"
+          />
+          <TemplateField
+            label="Clinical Reasoning"
+            value={reasoning}
+            onChange={setReasoning}
+            category="assessment"
+            multiline
+            rows={3}
+            placeholder="e.g. Fever and raised CRP — continue antibiotics."
+          />
         </div>
       </div>
 
@@ -165,21 +147,26 @@ const TemplateEntry: React.FC<TemplateEntryProps> = ({ onSubmit }) => {
       <div style={{ backgroundColor: COLORS.surface, border: `1px solid ${COLORS.borderLight}`, borderRadius: '12px', padding: '16px' }}>
         <SectionHeader icon="📋" label="Plan" />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {[
-            { label: 'Investigations', color: COLORS.blue, val: investigations, set: setInvestigations, ref: refs.investigations, field: 'investigations', placeholder: 'One per line:\nFBC + CRP\nCT Abdomen' },
-            { label: 'Medications ⚠️ unchecked by default', color: COLORS.red, val: medications, set: setMedications, ref: refs.medications, field: 'medications', placeholder: 'One per line:\nInj. Pip-Tazo 4.5g IV Q8H' },
-            { label: 'Nursing Instructions', color: COLORS.green, val: nursing, set: setNursing, ref: refs.nursing, field: 'nursing', placeholder: 'One per line:\nHourly urine output\nWound review' },
-            { label: 'Follow-up', color: COLORS.amber, val: followUp, set: setFollowUp, ref: refs.followUp, field: 'followUp', placeholder: 'One per line:\nReview in 4 hours' },
-          ].map(({ label, color, val, set, ref, field, placeholder }) => (
-            <div key={field}>
+          {([
+            { label: 'Investigations', color: COLORS.blue, bg: COLORS.blueBg, items: investigations, setItems: setInvestigations, category: 'investigations' as const, placeholder: 'e.g. FBC + CRP — press Enter to add' },
+            { label: 'Medications ⚠️ unchecked by default', color: COLORS.red, bg: COLORS.redBg, items: medications, setItems: setMedications, category: 'medications' as const, placeholder: 'e.g. Inj. Pip-Tazo 4.5g IV Q8H' },
+            { label: 'Nursing Instructions', color: COLORS.green, bg: COLORS.greenBg, items: nursing, setItems: setNursing, category: 'nursing' as const, placeholder: 'e.g. Hourly urine output' },
+            { label: 'Follow-up', color: COLORS.amber, bg: COLORS.amberBg, items: followUp, setItems: setFollowUp, category: 'followUp' as const, placeholder: 'e.g. Review in 4 hours' },
+          ] as const).map(({ label, color, bg, items, setItems, category, placeholder }) => (
+            <div key={category}>
               <label style={{ fontSize: '12px', fontWeight: 600, color, display: 'block', marginBottom: '4px' }}>{label}</label>
-              <textarea value={val} onChange={e => set(e.target.value)} placeholder={placeholder} rows={3} style={areaStyle} {...fp(field, ref)} />
+              <PlanTagInput
+                items={items as string[]}
+                onChange={setItems as (items: string[]) => void}
+                color={color}
+                bg={bg}
+                placeholder={placeholder}
+                category={category}
+              />
             </div>
           ))}
         </div>
       </div>
-
-      <ClinicalKeyboard onInsert={handleInsert} />
 
       <button
         onClick={handleSubmit}
