@@ -7,6 +7,8 @@ import TemplateEntry from '../components/scribing/TemplateEntry';
 import NaturalLanguageEntry from '../components/scribing/NaturalLanguageEntry';
 import SOAPReviewScreen from '../components/scribing/SOAPReviewScreen';
 import type { ConfirmedPlanItems } from '../components/scribing/SOAPReviewScreen';
+import NoteExportPanel from '../components/scribing/NoteExportPanel';
+import type { NoteExportData } from '../utils/exportSOAPNote';
 import useSOAPGenerator from '../hooks/useSOAPGenerator';
 import { createRepository } from '../services/createRepository';
 import { getDoctorProfile } from '../services/doctorProfile';
@@ -24,7 +26,7 @@ import { getDoctorProfile } from '../services/doctorProfile';
  */
 
 type NoteMode = 'quick' | 'template' | 'natural';
-type EntryPhase = 'entry' | 'review';
+type EntryPhase = 'entry' | 'review' | 'export';
 
 const MODES: { key: NoteMode; label: string; icon: string; description: string }[] = [
   { key: 'quick', label: 'Quick Plan', icon: '⚡', description: 'Assessment + plan items only' },
@@ -40,6 +42,7 @@ const NoteEntryScreen: React.FC<{
   const [mode, setMode] = useState<NoteMode>('quick');
   const [phase, setPhase] = useState<EntryPhase>('entry');
   const [manualNote, setManualNote] = useState<StructuredSOAPNote | null>(null);
+  const [exportData, setExportData] = useState<NoteExportData | null>(null);
 
   const soapGenerator = useSOAPGenerator();
   const repository = useMemo(() => createRepository(), []);
@@ -90,18 +93,31 @@ Current Medications: ${patient.medications.filter(m => m.isActive).map(m => `${m
       `**Plan:**\n${planLines.join('\n')}`,
     ].filter(Boolean).join('\n\n');
 
+    const signedAt = new Date().toISOString();
+
     await repository.addNote(patient.id, {
       id: `N-${Date.now()}`,
       author: getDoctorProfile()?.doctorName ?? 'Doctor',
       content,
       type: 'ward-round',
       isAIGenerated: mode === 'natural',
-      createdAt: new Date().toISOString(),
+      createdAt: signedAt,
       isApproved: true,
     });
 
-    onComplete();
-  }, [activeNote, repository, patient.id, mode, onComplete]);
+    setExportData({
+      patientName: patient.name,
+      hospitalNumber: patient.hospitalNumber ?? '',
+      diagnosis: patient.diagnosis,
+      signedAt,
+      subjective: note.subjective,
+      objective: note.objective,
+      assessment: note.assessment,
+      plan: planLines.join('\n') || 'No plan items confirmed.',
+    });
+
+    setPhase('export');
+  }, [activeNote, repository, patient, mode]);
 
   const handleReject = useCallback(() => {
     setManualNote(null);
@@ -194,6 +210,13 @@ Current Medications: ${patient.medications.filter(m => m.isActive).map(m => `${m
             onReject={handleReject}
             isGenerating={isGenerating}
             generateError={generateError}
+          />
+        )}
+
+        {phase === 'export' && exportData && (
+          <NoteExportPanel
+            noteData={exportData}
+            onDone={onComplete}
           />
         )}
       </div>
