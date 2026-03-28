@@ -1,19 +1,20 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Patient } from './types/patient';
 import { createRepository } from './services/createRepository';
-import { isProfileComplete } from './services/doctorProfile';
+import { isProfileComplete, getDoctorProfile } from './services/doctorProfile';
 import WardListScreen from './screens/WardListScreen';
 import PatientDetailScreen from './screens/PatientDetailScreen';
 import ScribingScreen from './screens/ScribingScreen';
 import NoteEntryScreen from './screens/NoteEntryScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import AmendmentScreenPage from './screens/AmendmentScreen';
-import AdmissionScreen from './screens/AdmissionScreen';
 import SetupScreen from './screens/SetupScreen';
 import OPDVisitTypeScreen from './screens/OPDVisitTypeScreen';
+import NoteInputSelectorScreen from './screens/NoteInputSelectorScreen';
 import ScratchpadScreen from './screens/ScratchpadScreen';
 import ClinicalNoteReviewScreen from './screens/ClinicalNoteReviewScreen';
 import type { NoteType } from './components/scratchpad/NoteTypeSelector';
+import type { InputMethod, NewPatientInfo } from './screens/NoteInputSelectorScreen';
 import type { Stroke, ScratchpadNote } from './hooks/useScratchpad';
 
 /**
@@ -23,7 +24,7 @@ import type { Stroke, ScratchpadNote } from './hooks/useScratchpad';
  */
 
 /** All possible application screens */
-type Screen = 'setup' | 'list' | 'detail' | 'scribing' | 'typed-note' | 'orders' | 'amend' | 'admission' | 'visit-type' | 'scratchpad' | 'note-review';
+type Screen = 'setup' | 'list' | 'detail' | 'scribing' | 'typed-note' | 'orders' | 'amend' | 'admission' | 'visit-type' | 'note-input-selector' | 'scratchpad' | 'note-review';
 
 function App() {
   const repository = useMemo(() => createRepository(), []);
@@ -76,10 +77,74 @@ function App() {
   };
 
   /**
-   * Navigate to the admission form
+   * Navigate to note input selector — the unified 3-tap entry for new patients.
+   * The old AdmissionScreen typed form is no longer the primary path.
    */
   const handleAdmitPatient = () => {
-    setCurrentScreen('admission');
+    setSelectedPatientId(null);
+    setCurrentScreen('note-input-selector');
+  };
+
+  /**
+   * Handles the selection of input method and note type from NoteInputSelectorScreen.
+   * For Scribble: navigates directly to the canvas (patient created at confirm).
+   * For Type/Dictate + new patient: creates a minimal patient record immediately so
+   * the existing NoteEntryScreen and ScribingScreen receive a valid patient.
+   */
+  const handleNoteInputSelected = async (
+    method: InputMethod,
+    noteType: NoteType,
+    newPatient?: NewPatientInfo,
+  ) => {
+    if (method === 'scribble') {
+      // Patient may be null — ScratchpadScreen and ClinicalNoteReviewScreen handle this.
+      setScratchpadNoteType(noteType);
+      setScratchpadStrokes([]);
+      setCurrentScreen('scratchpad');
+      return;
+    }
+
+    // For Type and Dictate, the target screens expect a patient record.
+    // If there is no selected patient yet, create a minimal one now.
+    if (!selectedPatientId && newPatient) {
+      const admissionDate = new Date().toISOString().split('T')[0];
+      const created = await repository.admitPatient({
+        status: 'active',
+        name: newPatient.name || 'New Patient',
+        age: newPatient.age,
+        sex: newPatient.sex,
+        hospitalNumber: `MRN-${Date.now()}`,
+        location: 'TBD',
+        consultant: getDoctorProfile()?.doctorName ?? '',
+        diagnosis: '',
+        admissionDate,
+        dayOfStay: 1,
+        problems: [],
+        vitals: {
+          respirationRate: 0,
+          spO2: 0,
+          onSupplementalO2: false,
+          spO2Scale: 1 as const,
+          systolicBP: 0,
+          diastolicBP: 0,
+          heartRate: 0,
+          consciousness: 'alert' as const,
+          temperature: 0,
+          recordedAt: new Date().toISOString(),
+        },
+        news2Score: 0,
+        medications: [],
+        investigations: [],
+        notes: [],
+        amendments: [],
+        summary: '',
+      });
+      setSelectedPatientId(created.id);
+      // Add directly to avoid race condition with getAllPatients async
+      setPatients(prev => [...prev, created]);
+    }
+
+    setCurrentScreen(method === 'type' ? 'typed-note' : 'scribing');
   };
 
   /**
@@ -116,10 +181,14 @@ function App() {
   };
 
   /**
-   * Note confirmed and saved — return to patient detail and clean up scratchpad state
+   * Note confirmed and saved — return to patient detail and clean up scratchpad state.
+   * @param newPatientId - Set when ClinicalNoteReviewScreen created a new patient record.
    */
-  const handleNoteConfirmed = () => {
+  const handleNoteConfirmed = (newPatientId?: string) => {
     repository.getAllPatients().then(setPatients);
+    if (newPatientId) {
+      setSelectedPatientId(newPatientId);
+    }
     setScratchpadNoteType(null);
     setScratchpadNote(null);
     setScratchpadStrokes([]);
@@ -135,16 +204,6 @@ function App() {
     await repository.dischargePatient(selectedPatientId);
     await repository.getAllPatients().then(setPatients);
     handleBackToList();
-  };
-
-  /**
-   * Called after a new patient is successfully admitted.
-   * Refreshes the patient list and navigates to the new patient's detail screen.
-   */
-  const handlePatientAdmitted = (newPatientId: string) => {
-    repository.getAllPatients().then(setPatients);
-    setSelectedPatientId(newPatientId);
-    setCurrentScreen('detail');
   };
 
   /**
@@ -174,14 +233,6 @@ function App() {
             patients={patients}
             onSelectPatient={handleSelectPatient}
             onAdmitPatient={handleAdmitPatient}
-          />
-        );
-
-      case 'admission':
-        return (
-          <AdmissionScreen
-            onAdmitted={handlePatientAdmitted}
-            onCancel={handleBackToList}
           />
         );
 
@@ -252,6 +303,15 @@ function App() {
           />
         );
 
+      case 'note-input-selector':
+        return (
+          <NoteInputSelectorScreen
+            patient={selectedPatient}
+            onBack={selectedPatient ? handleBackToDetail : handleBackToList}
+            onSelect={handleNoteInputSelected}
+          />
+        );
+
       case 'visit-type':
         if (!selectedPatient) {
           setCurrentScreen('list');
@@ -266,22 +326,24 @@ function App() {
         );
 
       case 'scratchpad':
-        if (!selectedPatient || !scratchpadNoteType) {
+        // selectedPatient may be null for new patients — ScratchpadScreen handles it
+        if (!scratchpadNoteType) {
           setCurrentScreen('list');
           return null;
         }
         return (
           <ScratchpadScreen
-            patient={selectedPatient}
+            patient={selectedPatient ?? null}
             noteType={scratchpadNoteType}
             initialStrokes={scratchpadStrokes.length > 0 ? scratchpadStrokes : undefined}
             onNoteProcessed={handleNoteProcessed}
-            onBack={() => setCurrentScreen('visit-type')}
+            onBack={() => selectedPatient ? setCurrentScreen('visit-type') : setCurrentScreen('note-input-selector')}
           />
         );
 
       case 'note-review':
-        if (!selectedPatient || !scratchpadNoteType || !scratchpadNote) {
+        // selectedPatient may be null for new-patient scribble
+        if (!scratchpadNoteType || !scratchpadNote) {
           setCurrentScreen('list');
           return null;
         }
@@ -289,7 +351,7 @@ function App() {
           <ClinicalNoteReviewScreen
             noteType={scratchpadNoteType}
             note={scratchpadNote}
-            patient={selectedPatient}
+            patient={selectedPatient ?? null}
             strokes={scratchpadStrokes}
             onConfirmed={handleNoteConfirmed}
             onEditScribble={handleEditScribble}

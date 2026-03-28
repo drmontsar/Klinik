@@ -10,7 +10,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { COLORS } from '../constants/colors';
-import type { Patient } from '../types/patient';
+import type { Patient, Vitals } from '../types/patient';
 import type { NoteType } from '../components/scratchpad/NoteTypeSelector';
 import type { OPInitialAssessment } from '../types/OPInitialAssessment';
 import type { OPFollowUpAssessment } from '../types/OPFollowUpAssessment';
@@ -38,12 +38,42 @@ const NOTE_TYPE_BADGE_COLOR: Record<NoteType, string> = {
 interface ClinicalNoteReviewScreenProps {
   noteType: NoteType;
   note: ScratchpadNote;
-  patient: Patient;
+  /** null when the patient is brand-new — this screen will create the record on confirm. */
+  patient: Patient | null;
   strokes: Stroke[];
-  onConfirmed: () => void;
+  /** Called after save. newPatientId is set when this screen created a new patient. */
+  onConfirmed: (newPatientId?: string) => void;
   onEditScribble: (strokes: Stroke[]) => void;
   onBack: () => void;
 }
+
+// ---------------------------------------------------------------------------
+// Inline input style — shared by the new-patient demographics section
+// ---------------------------------------------------------------------------
+const fieldStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '9px 12px',
+  border: `1px solid ${COLORS.borderLight}`,
+  borderRadius: '8px',
+  fontSize: '14px',
+  color: COLORS.text,
+  backgroundColor: COLORS.surface,
+  fontFamily: 'inherit',
+  boxSizing: 'border-box',
+  outline: 'none',
+};
+
+const miniLabelStyle: React.CSSProperties = {
+  fontSize: '11px',
+  fontWeight: 600,
+  color: COLORS.textMuted,
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+  display: 'block',
+  marginBottom: '4px',
+};
+
+// ---------------------------------------------------------------------------
 
 const ClinicalNoteReviewScreen: React.FC<ClinicalNoteReviewScreenProps> = ({
   noteType,
@@ -54,11 +84,33 @@ const ClinicalNoteReviewScreen: React.FC<ClinicalNoteReviewScreenProps> = ({
   onEditScribble,
   onBack,
 }) => {
+  const isNewPatient = !patient;
+
   const [note, setNote] = useState<ScratchpadNote>(initialNote);
   // CLINICAL: manualCorrectionsCount tracks AI accuracy — never shown to doctor
   const [manualCorrectionsCount, setManualCorrectionsCount] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  // New-patient demographics — only used when patient === null
+  const [newName, setNewName] = useState('');
+  const [newAge, setNewAge] = useState('');
+  const [newSex, setNewSex] = useState<'Male' | 'Female' | 'Other'>('Male');
+  const [newLocation, setNewLocation] = useState('');
+  const [newDiagnosis, setNewDiagnosis] = useState(() => {
+    // Pre-populate diagnosis from the AI-extracted note where possible
+    if (noteType === 'initial') {
+      return (initialNote as OPInitialAssessment).diagnosis?.primary ?? '';
+    }
+    if (noteType === 'followup') {
+      return (initialNote as OPFollowUpAssessment).diagnosis?.primary ?? '';
+    }
+    if (noteType === 'soap') {
+      return (initialNote as StructuredSOAPNote).assessment?.primaryDiagnosis ?? '';
+    }
+    return '';
+  });
+  const [nameError, setNameError] = useState(false);
 
   const repository = useMemo(() => createRepository(), []);
 
@@ -66,10 +118,18 @@ const ClinicalNoteReviewScreen: React.FC<ClinicalNoteReviewScreenProps> = ({
 
   /**
    * Signs and saves the note to the patient record.
+   * For new patients: creates the patient record first, then saves the note.
    * CLINICAL: This is the only point at which the note becomes immutable.
    * Before this tap — nothing is saved. After this tap — the record is permanent.
    */
   const handleSign = async () => {
+    // SAFETY: new patients require at least a name for clinical identification
+    if (isNewPatient && !newName.trim()) {
+      setNameError(true);
+      setTimeout(() => setNameError(false), 1500);
+      return;
+    }
+
     setIsSaving(true);
     setSaveError(null);
 
@@ -77,7 +137,40 @@ const ClinicalNoteReviewScreen: React.FC<ClinicalNoteReviewScreenProps> = ({
       const signedAt = new Date().toISOString();
       const doctorName = getDoctorProfile()?.doctorName ?? 'Doctor';
 
-      // Determine note type string and content for the ClinicalNote record
+      // For new patients, create the patient record first
+      let patientId: string;
+      if (isNewPatient) {
+        const emptyVitals: Vitals = {
+          respirationRate: 0, spO2: 0, onSupplementalO2: false, spO2Scale: 1,
+          systolicBP: 0, diastolicBP: 0, heartRate: 0, consciousness: 'alert',
+          temperature: 0, recordedAt: signedAt,
+        };
+        const created = await repository.admitPatient({
+          status: 'active',
+          name: newName.trim(),
+          age: parseInt(newAge, 10) || 0,
+          sex: newSex,
+          hospitalNumber: `MRN-${Date.now()}`,
+          location: newLocation.trim() || 'TBD',
+          consultant: doctorName,
+          diagnosis: newDiagnosis.trim(),
+          admissionDate: signedAt.split('T')[0],
+          dayOfStay: 1,
+          problems: [],
+          vitals: emptyVitals,
+          news2Score: 0,
+          medications: [],
+          investigations: [],
+          notes: [],
+          amendments: [],
+          summary: '',
+        });
+        patientId = created.id;
+      } else {
+        patientId = patient.id;
+      }
+
+      // Determine note type string for the ClinicalNote record
       let noteTypeStr: 'ward-round' | 'progress' | 'admission' = 'ward-round';
       if (noteType === 'initial') noteTypeStr = 'admission';
       else if (noteType === 'followup') noteTypeStr = 'progress';
@@ -93,7 +186,7 @@ const ClinicalNoteReviewScreen: React.FC<ClinicalNoteReviewScreenProps> = ({
         },
       });
 
-      await repository.addNote(patient.id, {
+      await repository.addNote(patientId, {
         id: `N-${Date.now()}`,
         author: doctorName,
         content,
@@ -103,7 +196,8 @@ const ClinicalNoteReviewScreen: React.FC<ClinicalNoteReviewScreenProps> = ({
         isApproved: true,
       });
 
-      onConfirmed();
+      // Pass new patient ID so App can navigate to the correct patient detail
+      onConfirmed(isNewPatient ? patientId : undefined);
     } catch (e) {
       setSaveError(
         e instanceof Error
@@ -174,10 +268,10 @@ const ClinicalNoteReviewScreen: React.FC<ClinicalNoteReviewScreenProps> = ({
         </button>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: '15px', fontWeight: 700, color: COLORS.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-            {patient.name}
+            {isNewPatient ? (newName || 'New Patient') : patient!.name}
           </div>
           <div style={{ fontSize: '12px', color: COLORS.textMuted }}>
-            {patient.age}y · {patient.sex}
+            {isNewPatient ? 'Complete patient details below' : `${patient!.age}y · ${patient!.sex}`}
           </div>
         </div>
         {/* Visit type badge */}
@@ -212,6 +306,67 @@ const ClinicalNoteReviewScreen: React.FC<ClinicalNoteReviewScreenProps> = ({
         <span>✦</span>
         <span>AI draft — review every field before signing. Tap any field to edit.</span>
       </div>
+
+      {/* New-patient demographics — shown only when no patient record exists yet */}
+      {isNewPatient && (
+        <div style={{
+          margin: '16px 16px 0',
+          backgroundColor: COLORS.surface,
+          border: `2px solid ${nameError ? COLORS.red : COLORS.borderLight}`,
+          borderRadius: '12px',
+          padding: '16px',
+          transition: 'border-color 0.3s',
+        }}>
+          <div style={{
+            fontSize: '13px', fontWeight: 700, color: COLORS.text,
+            marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px',
+          }}>
+            <span>🧑‍⚕️</span>
+            Patient Details
+            <span style={{ fontSize: '11px', fontWeight: 400, color: COLORS.red, marginLeft: '4px' }}>
+              {nameError ? '— Name is required' : '— required before signing'}
+            </span>
+          </div>
+          <div style={{ marginBottom: '10px' }}>
+            <label style={miniLabelStyle}>Patient Name *</label>
+            <input
+              type="text"
+              placeholder="Full name"
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              style={{ ...fieldStyle, borderColor: nameError && !newName.trim() ? COLORS.red : COLORS.borderLight }}
+            />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+            <div>
+              <label style={miniLabelStyle}>Age</label>
+              <input type="number" placeholder="Years" value={newAge}
+                onChange={e => setNewAge(e.target.value)} min={0} max={120} style={fieldStyle} />
+            </div>
+            <div>
+              <label style={miniLabelStyle}>Sex</label>
+              <select value={newSex} onChange={e => setNewSex(e.target.value as 'Male' | 'Female' | 'Other')}
+                style={fieldStyle}>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div>
+              <label style={miniLabelStyle}>Ward / Bed</label>
+              <input type="text" placeholder="e.g. Ward 3, Bed B-04" value={newLocation}
+                onChange={e => setNewLocation(e.target.value)} style={fieldStyle} />
+            </div>
+            <div>
+              <label style={miniLabelStyle}>Primary Diagnosis</label>
+              <input type="text" placeholder="Auto-filled from note" value={newDiagnosis}
+                onChange={e => setNewDiagnosis(e.target.value)} style={fieldStyle} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Note content */}
       <div style={{ padding: '16px 16px 0' }}>

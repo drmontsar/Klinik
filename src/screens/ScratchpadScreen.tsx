@@ -20,7 +20,8 @@ const NOTE_TYPE_LABELS: Record<NoteType, string> = {
 };
 
 interface ScratchpadScreenProps {
-  patient: Patient;
+  /** null for new patients — demographics will be extracted from the drawing */
+  patient: Patient | null;
   noteType: NoteType;
   initialStrokes?: Stroke[];
   onNoteProcessed: (note: ScratchpadNote, strokes: Stroke[]) => void;
@@ -36,15 +37,17 @@ const ScratchpadScreen: React.FC<ScratchpadScreenProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Build patient context for the AI service
+  // Build patient context for the AI service.
+  // For new patients (patient === null), send an anonymous context so Claude
+  // extracts whatever clinical detail it can find in the drawing.
+  // SAFETY: allergies are unknown for new patients — Claude is not asked to flag conflicts.
   const patientContext = useMemo<ClinicalPatientContext>(() => ({
-    patientId: patient.id,
-    patientName: patient.name,
-    age: patient.age,
-    sex: patient.sex,
+    patientId: patient?.id ?? 'new',
+    patientName: patient?.name ?? 'New Patient',
+    age: patient?.age ?? 0,
+    sex: patient?.sex ?? 'Unknown',
     specialty: 'general-surgery',
-    knownDiagnoses: [patient.diagnosis, ...patient.problems].filter(Boolean),
-    // SAFETY: allergies always passed so Claude can flag conflicts
+    knownDiagnoses: patient ? [patient.diagnosis, ...patient.problems].filter(Boolean) : [],
     knownAllergies: [],
   }), [patient]);
 
@@ -108,7 +111,7 @@ const ScratchpadScreen: React.FC<ScratchpadScreenProps> = ({
         </button>
         <div style={{ height: '16px', width: '1px', backgroundColor: 'rgba(255,255,255,0.15)' }} />
         <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
-          {patient.name}
+          {patient?.name ?? 'New Patient'}
         </div>
         <div style={{
           marginLeft: 'auto',
