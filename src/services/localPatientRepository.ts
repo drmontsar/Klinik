@@ -33,7 +33,9 @@ function readStore(): Patient[] {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return [];
-        return JSON.parse(raw) as Patient[];
+        const patients = JSON.parse(raw) as Patient[];
+        // Migrate records saved before the status field was added
+        return patients.map(p => p.status ? p : { ...p, status: 'active' as const });
     } catch {
         // SAFETY: If storage is corrupt, start fresh rather than crashing.
         console.warn('[KliniK] LocalPatientRepository: storage corrupted, resetting.');
@@ -54,7 +56,8 @@ export class LocalPatientRepository implements PatientRepository {
     // -----------------------------------------------------------------------
 
     async getAllPatients(): Promise<Patient[]> {
-        return readStore();
+        // Return active patients only — discharged patients are removed from the ward list
+        return readStore().filter(p => p.status !== 'discharged');
     }
 
     async getPatientById(id: string): Promise<Patient | undefined> {
@@ -127,5 +130,14 @@ export class LocalPatientRepository implements PatientRepository {
         patients.push(patient);
         writeStore(patients);
         return { ...patient };
+    }
+
+    async dischargePatient(id: string): Promise<void> {
+        const patients = readStore();
+        const idx = patients.findIndex(p => p.id === id);
+        if (idx === -1) throw new Error(`Patient ${id} not found`);
+        // CLINICAL: Discharge sets status — record is preserved in localStorage, not deleted
+        patients[idx] = { ...patients[idx], status: 'discharged' };
+        writeStore(patients);
     }
 }

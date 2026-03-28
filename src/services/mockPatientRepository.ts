@@ -17,8 +17,8 @@ export class MockPatientRepository implements PatientRepository {
     // -----------------------------------------------------------------------
 
     async getAllPatients(): Promise<Patient[]> {
-        // Return fresh copies so React detects state changes
-        return this.patients.map(p => ({ ...p }));
+        // Return active patients only — discharged patients are removed from the ward list
+        return this.patients.filter(p => p.status !== 'discharged').map(p => ({ ...p }));
     }
 
     async getPatientById(id: string): Promise<Patient | undefined> {
@@ -66,5 +66,12 @@ export class MockPatientRepository implements PatientRepository {
         const patient: Patient = { ...data, id: `P${nextNum}` };
         this.patients.push(patient);
         return { ...patient };
+    }
+
+    async dischargePatient(id: string): Promise<void> {
+        const patient = this.patients.find(p => p.id === id);
+        if (!patient) throw new Error(`Patient ${id} not found`);
+        // CLINICAL: Discharge sets status — record is preserved, not deleted
+        patient.status = 'discharged';
     }
 }

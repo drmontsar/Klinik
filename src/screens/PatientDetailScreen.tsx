@@ -20,7 +20,14 @@ const PatientDetailScreen: React.FC<{
     onBack: () => void;
     onStartScribing: () => void;
     onWriteNote: () => void;
-}> = ({ patient, onBack, onStartScribing, onWriteNote }) => {
+    onDischarge: () => void;
+}> = ({ patient, onBack, onStartScribing, onWriteNote, onDischarge }) => {
+    const handleDischarge = () => {
+        if (window.confirm(`Discharge ${patient.name}?\n\nThis will remove them from the ward list. The clinical record is preserved.`)) {
+            onDischarge();
+        }
+    };
+
     return (
         <div style={{ maxWidth: '800px', margin: '0 auto', fontFamily: 'system-ui, sans-serif', paddingBottom: '80px', backgroundColor: COLORS.bgSubtle, minHeight: '100vh' }}>
             {/* Top Navigation */}
@@ -45,6 +52,21 @@ const PatientDetailScreen: React.FC<{
 
             {/* Bottom Floating Action Area */}
             <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, backgroundColor: COLORS.surface, borderTop: `1px solid ${COLORS.borderLight}`, padding: '14px 24px', display: 'flex', justifyContent: 'center', gap: '12px', boxShadow: '0 -4px 6px -1px rgba(0, 0, 0, 0.05)', zIndex: 20 }}>
+                <button
+                    onClick={handleDischarge}
+                    style={{
+                        backgroundColor: 'transparent',
+                        color: COLORS.textMuted,
+                        border: `1px solid ${COLORS.borderLight}`,
+                        borderRadius: '24px',
+                        padding: '11px 20px',
+                        fontSize: '14px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                    }}
+                >
+                    Discharge
+                </button>
                 <button
                     onClick={onWriteNote}
                     style={{

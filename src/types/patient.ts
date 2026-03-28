@@ -133,6 +133,8 @@ export interface Amendment {
 export interface Patient {
     /** Unique patient identifier */
     id: string;
+    /** Patient status — discharged patients are removed from the active ward list */
+    status: 'active' | 'discharged';
     /** Patient full name */
     name: string;
     /** Age in years */

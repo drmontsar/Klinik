@@ -47,4 +47,11 @@ export interface PatientRepository {
      * @returns The newly created patient with its assigned ID
      */
     admitPatient(data: Omit<Patient, 'id'>): Promise<Patient>;
+
+    /**
+     * Discharge a patient from the ward.
+     * Sets status to 'discharged' — the record is preserved, not deleted.
+     * @clinical-note Discharge is permanent and immutable. Use amendments for corrections.
+     */
+    dischargePatient(id: string): Promise<void>;
 }

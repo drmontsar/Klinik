@@ -112,6 +112,7 @@ const AdmissionForm: React.FC<AdmissionFormProps> = ({ onSubmit, onCancel, exist
     };
 
     onSubmit({
+      status: 'active',
       name: name.trim(),
       age: Number(age),
       sex,

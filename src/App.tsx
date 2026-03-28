@@ -73,6 +73,17 @@ function App() {
   };
 
   /**
+   * Discharge the selected patient — marks as discharged, removes from ward list.
+   * CLINICAL: Record is preserved in the repository. Status is set to 'discharged'.
+   */
+  const handleDischarge = async () => {
+    if (!selectedPatientId) return;
+    await repository.dischargePatient(selectedPatientId);
+    await repository.getAllPatients().then(setPatients);
+    handleBackToList();
+  };
+
+  /**
    * Called after a new patient is successfully admitted.
    * Refreshes the patient list and navigates to the new patient's detail screen.
    */
@@ -132,6 +143,7 @@ function App() {
             onBack={handleBackToList}
             onStartScribing={handleStartScribing}
             onWriteNote={handleWriteNote}
+            onDischarge={handleDischarge}
           />
         );
 
