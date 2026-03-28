@@ -6,9 +6,13 @@
 import type { StructuredSOAPNote } from '../../types/clinical';
 import type { AIProvider } from '../aiProvider';
 import { AI_API_KEY, AI_MODELS } from '../../constants/config';
+import { getDoctorProfile } from '../doctorProfile';
 
-// CLINICAL: System prompt mirrors CLAUDE.md specification exactly.
-const SOAP_SYSTEM_PROMPT = `You are a clinical documentation assistant in an Indian surgical oncology ward. Generate a structured clinical note from the consultation transcript provided.
+// CLINICAL: System prompt structure mirrors CLAUDE.md specification exactly.
+// Specialty is injected at runtime from the doctor's profile.
+function buildSOAPSystemPrompt(): string {
+  const specialty = getDoctorProfile()?.specialty ?? 'general medicine';
+  return `You are a clinical documentation assistant in an Indian ${specialty} ward. Generate a structured clinical note from the consultation transcript provided.
 
 Rules:
 - Subjective: patient symptoms in natural language, what the patient reports, pain score if mentioned
@@ -19,6 +23,7 @@ Rules:
 Indian clinical context:
 - Preserve Indian drug names and brand names exactly
 - Indian English accent transcription may have minor errors — use clinical context to interpret correctly
+- Specialty is ${specialty}
 
 Return ONLY valid JSON matching this exact structure. No other text. No markdown. No backticks:
 
@@ -46,7 +51,7 @@ export class OpenAIProvider implements AIProvider {
       body: JSON.stringify({
         model: AI_MODELS.openai,
         messages: [
-          { role: 'system', content: SOAP_SYSTEM_PROMPT },
+          { role: 'system', content: buildSOAPSystemPrompt() },
           {
             role: 'user',
             content: `Patient Context:\n${patientContext}\n\nTranscript:\n${transcript}\n\nGenerate the structured SOAP note as JSON.`,

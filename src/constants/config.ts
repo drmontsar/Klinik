@@ -40,10 +40,22 @@ export const OLLAMA_BASE_URL = 'http://localhost:11434';
 // ---------------------------------------------------------------------------
 
 /** Available ASR providers for speech-to-text */
-export type ASRProviderType = 'google_medical' | 'whisper';
+export type ASRProviderType = 'google_medical' | 'whisper' | 'medasr';
 
 /** Active ASR provider — change this to swap speech recognition backends */
-export const ASR_PROVIDER: ASRProviderType = 'whisper';
+export const ASR_PROVIDER: ASRProviderType = 'medasr';
+
+// ---------------------------------------------------------------------------
+// MedASR Local Server (used when ASR_PROVIDER = 'medasr')
+// ---------------------------------------------------------------------------
+
+/**
+ * URL of the locally-hosted MedASR FastAPI server.
+ * Start the server with: cd medasr-server && uvicorn server:app --port 8008
+ * For pilot hospital LAN deployment, replace with the server's LAN IP.
+ * Example: 'http://192.168.1.100:8008'
+ */
+export const MEDASR_SERVER_URL = 'http://localhost:8008';
 
 // ---------------------------------------------------------------------------
 // Google Cloud Speech-to-Text Settings (used when ASR_PROVIDER = 'google_medical')

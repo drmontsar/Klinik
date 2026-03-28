@@ -9,6 +9,7 @@ import type { ASRProvider } from './asrProvider';
 import { ASR_PROVIDER } from '../constants/config';
 import { GoogleMedicalASR } from './providers/googleMedicalASR';
 import { WhisperASR } from './providers/whisperASR';
+import { MedAsrASR } from './providers/medAsrASR';
 
 /**
  * Creates and returns the active ASR provider.
@@ -16,6 +17,8 @@ import { WhisperASR } from './providers/whisperASR';
  */
 export const createASRProvider = (): ASRProvider => {
     switch (ASR_PROVIDER) {
+        case 'medasr':
+            return new MedAsrASR();
         case 'google_medical':
             return new GoogleMedicalASR();
         case 'whisper':
@@ -23,6 +26,6 @@ export const createASRProvider = (): ASRProvider => {
         // Future: case 'deepgram': return new DeepgramASR();
         // Future: case 'aws_medical': return new AWSMedicalASR();
         default:
-            return new GoogleMedicalASR();
+            return new MedAsrASR();
     }
 };

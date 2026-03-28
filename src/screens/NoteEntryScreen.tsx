@@ -9,6 +9,7 @@ import SOAPReviewScreen from '../components/scribing/SOAPReviewScreen';
 import type { ConfirmedPlanItems } from '../components/scribing/SOAPReviewScreen';
 import useSOAPGenerator from '../hooks/useSOAPGenerator';
 import { createRepository } from '../services/createRepository';
+import { getDoctorProfile } from '../services/doctorProfile';
 
 /**
  * Note entry screen — three typed modes for writing clinical notes.
@@ -91,7 +92,7 @@ Current Medications: ${patient.medications.filter(m => m.isActive).map(m => `${m
 
     await repository.addNote(patient.id, {
       id: `N-${Date.now()}`,
-      author: 'Doctor',
+      author: getDoctorProfile()?.doctorName ?? 'Doctor',
       content,
       type: 'ward-round',
       isAIGenerated: mode === 'natural',

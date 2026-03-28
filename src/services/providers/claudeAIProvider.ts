@@ -7,10 +7,14 @@
 import type { StructuredSOAPNote } from '../../types/clinical';
 import type { AIProvider } from '../aiProvider';
 import { AI_API_KEY, AI_MODELS } from '../../constants/config';
+import { getDoctorProfile } from '../doctorProfile';
 
-// CLINICAL: This system prompt is specified in CLAUDE.md and must not be paraphrased.
-// It governs the clinical accuracy of every AI-generated note in the system.
-const SOAP_SYSTEM_PROMPT = `You are a clinical documentation assistant in an Indian surgical oncology ward. Generate a structured clinical note from the consultation transcript provided.
+// CLINICAL: This system prompt structure is specified in CLAUDE.md and must not be paraphrased.
+// The specialty is injected at runtime from the doctor's profile so the AI is tuned
+// to the actual clinical context of the treating doctor.
+function buildSOAPSystemPrompt(): string {
+  const specialty = getDoctorProfile()?.specialty ?? 'general medicine';
+  return `You are a clinical documentation assistant in an Indian ${specialty} ward. Generate a structured clinical note from the consultation transcript provided.
 
 Rules:
 - Subjective: patient symptoms in natural language, what the patient reports, pain score if mentioned
@@ -23,7 +27,7 @@ Rules:
 Indian clinical context:
 - Preserve Indian drug names and brand names exactly
 - Indian English accent transcription may have minor errors — use clinical context to interpret correctly
-- Specialty is surgical oncology
+- Specialty is ${specialty}
 
 Return ONLY valid JSON matching this exact structure.
 No other text. No markdown. No backticks:
@@ -82,7 +86,7 @@ export class ClaudeAIProvider implements AIProvider {
       body: JSON.stringify({
         model: AI_MODELS.claude,
         max_tokens: 2048,
-        system: SOAP_SYSTEM_PROMPT,
+        system: buildSOAPSystemPrompt(),
         messages: [
           {
             role: 'user',

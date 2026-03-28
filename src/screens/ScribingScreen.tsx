@@ -7,6 +7,8 @@ import useSOAPGenerator from '../hooks/useSOAPGenerator';
 import ScribingSession from '../components/scribing/ScribingSession';
 import SOAPReviewScreen from '../components/scribing/SOAPReviewScreen';
 import type { ConfirmedPlanItems } from '../components/scribing/SOAPReviewScreen';
+import NoteExportPanel from '../components/scribing/NoteExportPanel';
+import type { NoteExportData } from '../utils/exportSOAPNote';
 import { createRepository } from '../services/createRepository';
 
 /**
@@ -21,7 +23,7 @@ import { createRepository } from '../services/createRepository';
  * @param onComplete - Callback when scribing session is complete
  */
 
-type ScribingPhase = 'recording' | 'review';
+type ScribingPhase = 'recording' | 'review' | 'export';
 
 const ScribingScreen: React.FC<{
   patientId: string;
@@ -30,6 +32,7 @@ const ScribingScreen: React.FC<{
 }> = ({ patientId, onBack, onComplete }) => {
   const [phase, setPhase] = React.useState<ScribingPhase>('recording');
   const [patient, setPatient] = React.useState<Patient | null>(null);
+  const [exportData, setExportData] = React.useState<NoteExportData | null>(null);
   const repository = useMemo(() => createRepository(), []);
 
   const audioCapture = useAudioCapture();
@@ -106,23 +109,30 @@ Latest Vitals: HR ${patient.vitals.heartRate}, BP ${patient.vitals.systolicBP}/$
     pendingSOAPRef.current = true;
   }, [audioCapture, transcription]);
 
-  // CLINICAL: handleApprove saves confirmed plan items as a structured note.
+  // CLINICAL: handleApprove saves confirmed plan items as a structured note,
+  // then transitions to the export phase so the doctor can send the note
+  // to their existing hospital EMR without any API integration.
   // Only items the doctor explicitly confirmed are passed downstream.
   const handleApprove = useCallback(
     async (confirmedItems: ConfirmedPlanItems) => {
       if (!soapGenerator.soapNote) return;
 
       const note = soapGenerator.soapNote.displayNote;
+      const signedAt = new Date().toISOString();
+
+      // Build the plan section for both storage and export
+      const planLines = [
+        ...confirmedItems.investigations.map(i => `• [Investigation] ${i}`),
+        ...confirmedItems.medications.map(m => `• [Medication] ${m}`),
+        ...confirmedItems.nursing.map(n => `• [Nursing] ${n}`),
+        ...confirmedItems.followUp.map(f => `• [Follow-up] ${f}`),
+      ].join('\n');
+
       const content = [
         `**Subjective:** ${note.subjective}`,
         `**Objective:** ${note.objective}`,
         `**Assessment:** ${note.assessment}`,
-        `**Plan:**\n${[
-          ...confirmedItems.investigations.map(i => `• [Investigation] ${i}`),
-          ...confirmedItems.medications.map(m => `• [Medication] ${m}`),
-          ...confirmedItems.nursing.map(n => `• [Nursing] ${n}`),
-          ...confirmedItems.followUp.map(f => `• [Follow-up] ${f}`),
-        ].join('\n')}`,
+        `**Plan:**\n${planLines}`,
       ].join('\n\n');
 
       await repository.addNote(patientId, {
@@ -131,13 +141,25 @@ Latest Vitals: HR ${patient.vitals.heartRate}, BP ${patient.vitals.systolicBP}/$
         content,
         type: 'ward-round',
         isAIGenerated: true,
-        createdAt: new Date().toISOString(),
+        createdAt: signedAt,
         isApproved: true,
       });
 
-      onComplete();
+      // Prepare export data so the doctor can send this note to their EMR
+      setExportData({
+        patientName: patient?.name ?? patientId,
+        hospitalNumber: patient?.hospitalNumber ?? '',
+        diagnosis: patient?.diagnosis ?? '',
+        signedAt,
+        subjective: note.subjective,
+        objective: note.objective,
+        assessment: note.assessment,
+        plan: planLines || 'No plan items confirmed.',
+      });
+
+      setPhase('export');
     },
-    [soapGenerator.soapNote, repository, patientId, onComplete]
+    [soapGenerator.soapNote, repository, patientId, patient]
   );
 
   const handleReject = useCallback(() => {
@@ -240,6 +262,13 @@ Latest Vitals: HR ${patient.vitals.heartRate}, BP ${patient.vitals.systolicBP}/$
             onReject={handleReject}
             isGenerating={soapGenerator.isGenerating}
             generateError={soapGenerator.error}
+          />
+        )}
+
+        {phase === 'export' && exportData && (
+          <NoteExportPanel
+            noteData={exportData}
+            onDone={onComplete}
           />
         )}
       </div>

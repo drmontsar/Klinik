@@ -59,4 +59,12 @@ export class MockPatientRepository implements PatientRepository {
         if (!patient) throw new Error(`Patient ${patientId} not found`);
         patient.investigations = [...patient.investigations, investigation];
     }
+
+    async admitPatient(data: Omit<Patient, 'id'>): Promise<Patient> {
+        // Generate a sequential hospital-style ID based on current count
+        const nextNum = String(this.patients.length + 1).padStart(3, '0');
+        const patient: Patient = { ...data, id: `P${nextNum}` };
+        this.patients.push(patient);
+        return { ...patient };
+    }
 }

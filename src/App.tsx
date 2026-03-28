@@ -1,12 +1,15 @@
 import { useState, useEffect, useMemo } from 'react';
 import type { Patient } from './types/patient';
 import { createRepository } from './services/createRepository';
+import { isProfileComplete } from './services/doctorProfile';
 import WardListScreen from './screens/WardListScreen';
 import PatientDetailScreen from './screens/PatientDetailScreen';
 import ScribingScreen from './screens/ScribingScreen';
 import NoteEntryScreen from './screens/NoteEntryScreen';
 import OrdersScreen from './screens/OrdersScreen';
 import AmendmentScreenPage from './screens/AmendmentScreen';
+import AdmissionScreen from './screens/AdmissionScreen';
+import SetupScreen from './screens/SetupScreen';
 
 /**
  * Root application component with simple state-based screen routing.
@@ -15,12 +18,15 @@ import AmendmentScreenPage from './screens/AmendmentScreen';
  */
 
 /** All possible application screens */
-type Screen = 'list' | 'detail' | 'scribing' | 'typed-note' | 'orders' | 'amend';
+type Screen = 'setup' | 'list' | 'detail' | 'scribing' | 'typed-note' | 'orders' | 'amend' | 'admission';
 
 function App() {
   const repository = useMemo(() => createRepository(), []);
   const [patients, setPatients] = useState<Patient[]>([]);
-  const [currentScreen, setCurrentScreen] = useState<Screen>('list');
+  // Show setup screen on first launch if no doctor profile exists yet
+  const [currentScreen, setCurrentScreen] = useState<Screen>(
+    isProfileComplete() ? 'list' : 'setup'
+  );
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
 
   // Load patients from repository on mount
@@ -60,6 +66,23 @@ function App() {
   };
 
   /**
+   * Navigate to the admission form
+   */
+  const handleAdmitPatient = () => {
+    setCurrentScreen('admission');
+  };
+
+  /**
+   * Called after a new patient is successfully admitted.
+   * Refreshes the patient list and navigates to the new patient's detail screen.
+   */
+  const handlePatientAdmitted = (newPatientId: string) => {
+    repository.getAllPatients().then(setPatients);
+    setSelectedPatientId(newPatientId);
+    setCurrentScreen('detail');
+  };
+
+  /**
    * Navigate back to the patient detail screen (re-fetches data to pick up new notes)
    */
   const handleBackToDetail = () => {
@@ -73,11 +96,27 @@ function App() {
   // Render the active screen
   const renderScreen = () => {
     switch (currentScreen) {
+      case 'setup':
+        return (
+          <SetupScreen
+            onComplete={() => setCurrentScreen('list')}
+          />
+        );
+
       case 'list':
         return (
           <WardListScreen
             patients={patients}
             onSelectPatient={handleSelectPatient}
+            onAdmitPatient={handleAdmitPatient}
+          />
+        );
+
+      case 'admission':
+        return (
+          <AdmissionScreen
+            onAdmitted={handlePatientAdmitted}
+            onCancel={handleBackToList}
           />
         );
 
@@ -151,6 +190,7 @@ function App() {
           <WardListScreen
             patients={patients}
             onSelectPatient={handleSelectPatient}
+            onAdmitPatient={handleAdmitPatient}
           />
         );
     }

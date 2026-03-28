@@ -4,6 +4,7 @@ import type { VoiceOrder } from '../types/clinical';
 import type { Patient } from '../types/patient';
 import VoiceOrders from '../components/orders/VoiceOrders';
 import { createRepository } from '../services/createRepository';
+import { getDoctorProfile } from '../services/doctorProfile';
 
 /**
  * Orders screen — manages clinical orders for a patient.
@@ -48,7 +49,7 @@ const OrdersScreen: React.FC<{
     setOrders(prev =>
       prev.map(o =>
         o.id === orderId
-          ? { ...o, status: 'confirmed', confirmedBy: 'Dr. (Current User)' }
+          ? { ...o, status: 'confirmed', confirmedBy: getDoctorProfile()?.doctorName ?? 'Doctor' }
           : o
       )
     );

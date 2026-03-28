@@ -3,6 +3,7 @@ import { COLORS } from '../constants/colors';
 import type { ClinicalNote } from '../types/patient';
 import AmendmentForm from '../components/amendment/AmendmentForm';
 import { createRepository } from '../services/createRepository';
+import { getDoctorProfile } from '../services/doctorProfile';
 
 /**
  * Amendment screen — lists a patient's notes and allows the doctor to amend one.
@@ -50,7 +51,7 @@ const AmendmentScreen: React.FC<{
       // Original note is preserved. Amendment is appended to the record.
       const amendmentNote: ClinicalNote = {
         id: `A-${Date.now()}`,
-        author: 'Dr. (Current User)',
+        author: getDoctorProfile()?.doctorName ?? 'Doctor',
         content: amendedText,
         type: selectedNote.type,
         isAIGenerated: false,

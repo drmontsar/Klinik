@@ -39,4 +39,12 @@ export interface PatientRepository {
 
     /** Add an investigation result to a patient */
     addInvestigation(patientId: string, investigation: Investigation): Promise<void>;
+
+    /**
+     * Admit a new patient to the ward.
+     * Creates the patient record and returns it with a generated ID.
+     * @param data - All patient fields except id (generated server-side)
+     * @returns The newly created patient with its assigned ID
+     */
+    admitPatient(data: Omit<Patient, 'id'>): Promise<Patient>;
 }
