@@ -34,6 +34,7 @@ Return ONLY valid JSON matching this exact structure. No other text. No markdown
   "plan": { "investigations": ["string"], "medications": ["string"], "nursing": ["string"], "followUp": ["string"], "allPlanItems": ["string"] },
   "displayNote": { "subjective": "string", "objective": "string", "assessment": "string", "plan": "string" }
 }`;
+}
 
 export class OpenAIProvider implements AIProvider {
   readonly name = `OpenAI ${AI_MODELS.openai}`;

@@ -67,6 +67,7 @@ No other text. No markdown. No backticks:
     "plan": "string"
   }
 }`;
+}
 
 export class ClaudeAIProvider implements AIProvider {
   readonly name = `Claude ${AI_MODELS.claude}`;

@@ -40,7 +40,7 @@ const labelStyle: React.CSSProperties = {
   fontSize: '12px', color: COLORS.textMuted, display: 'block', marginBottom: '4px',
 };
 
-const sectionHeadStyle = (color = COLORS.text): React.CSSProperties => ({
+const sectionHeadStyle = (color: string = COLORS.text): React.CSSProperties => ({
   fontSize: '13px', fontWeight: 700, color, marginBottom: '4px',
   display: 'flex', alignItems: 'center', gap: '6px',
 });
