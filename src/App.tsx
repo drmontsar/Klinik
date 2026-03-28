@@ -10,6 +10,11 @@ import OrdersScreen from './screens/OrdersScreen';
 import AmendmentScreenPage from './screens/AmendmentScreen';
 import AdmissionScreen from './screens/AdmissionScreen';
 import SetupScreen from './screens/SetupScreen';
+import OPDVisitTypeScreen from './screens/OPDVisitTypeScreen';
+import ScratchpadScreen from './screens/ScratchpadScreen';
+import ClinicalNoteReviewScreen from './screens/ClinicalNoteReviewScreen';
+import type { NoteType } from './components/scratchpad/NoteTypeSelector';
+import type { Stroke, ScratchpadNote } from './hooks/useScratchpad';
 
 /**
  * Root application component with simple state-based screen routing.
@@ -18,7 +23,7 @@ import SetupScreen from './screens/SetupScreen';
  */
 
 /** All possible application screens */
-type Screen = 'setup' | 'list' | 'detail' | 'scribing' | 'typed-note' | 'orders' | 'amend' | 'admission';
+type Screen = 'setup' | 'list' | 'detail' | 'scribing' | 'typed-note' | 'orders' | 'amend' | 'admission' | 'visit-type' | 'scratchpad' | 'note-review';
 
 function App() {
   const repository = useMemo(() => createRepository(), []);
@@ -28,6 +33,11 @@ function App() {
     isProfileComplete() ? 'list' : 'setup'
   );
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+
+  // Scratchpad flow state — preserved across the 3-step flow
+  const [scratchpadNoteType, setScratchpadNoteType] = useState<NoteType | null>(null);
+  const [scratchpadNote, setScratchpadNote] = useState<ScratchpadNote | null>(null);
+  const [scratchpadStrokes, setScratchpadStrokes] = useState<Stroke[]>([]);
 
   // Load patients from repository on mount
   useEffect(() => {
@@ -70,6 +80,50 @@ function App() {
    */
   const handleAdmitPatient = () => {
     setCurrentScreen('admission');
+  };
+
+  /**
+   * Navigate to visit type selection (Step 1 of scratchpad flow)
+   */
+  const handleStartScribbling = () => {
+    setCurrentScreen('visit-type');
+  };
+
+  /**
+   * Navigate to the scratchpad canvas after note type is selected (Step 2)
+   */
+  const handleNoteTypeSelected = (type: NoteType) => {
+    setScratchpadNoteType(type);
+    setScratchpadStrokes([]);
+    setCurrentScreen('scratchpad');
+  };
+
+  /**
+   * Navigate to note review after canvas processing (Step 3)
+   */
+  const handleNoteProcessed = (note: ScratchpadNote, strokes: Stroke[]) => {
+    setScratchpadNote(note);
+    setScratchpadStrokes(strokes);
+    setCurrentScreen('note-review');
+  };
+
+  /**
+   * Return to canvas from review screen with strokes preserved for editing
+   */
+  const handleEditScribble = (strokes: Stroke[]) => {
+    setScratchpadStrokes(strokes);
+    setCurrentScreen('scratchpad');
+  };
+
+  /**
+   * Note confirmed and saved — return to patient detail and clean up scratchpad state
+   */
+  const handleNoteConfirmed = () => {
+    repository.getAllPatients().then(setPatients);
+    setScratchpadNoteType(null);
+    setScratchpadNote(null);
+    setScratchpadStrokes([]);
+    setCurrentScreen('detail');
   };
 
   /**
@@ -144,6 +198,7 @@ function App() {
             onStartScribing={handleStartScribing}
             onWriteNote={handleWriteNote}
             onDischarge={handleDischarge}
+            onStartScribbling={handleStartScribbling}
           />
         );
 
@@ -193,6 +248,51 @@ function App() {
         return (
           <AmendmentScreenPage
             patientId={selectedPatientId}
+            onBack={handleBackToDetail}
+          />
+        );
+
+      case 'visit-type':
+        if (!selectedPatient) {
+          setCurrentScreen('list');
+          return null;
+        }
+        return (
+          <OPDVisitTypeScreen
+            patient={selectedPatient}
+            onSelect={(type) => handleNoteTypeSelected(type)}
+            onBack={handleBackToDetail}
+          />
+        );
+
+      case 'scratchpad':
+        if (!selectedPatient || !scratchpadNoteType) {
+          setCurrentScreen('list');
+          return null;
+        }
+        return (
+          <ScratchpadScreen
+            patient={selectedPatient}
+            noteType={scratchpadNoteType}
+            initialStrokes={scratchpadStrokes.length > 0 ? scratchpadStrokes : undefined}
+            onNoteProcessed={handleNoteProcessed}
+            onBack={() => setCurrentScreen('visit-type')}
+          />
+        );
+
+      case 'note-review':
+        if (!selectedPatient || !scratchpadNoteType || !scratchpadNote) {
+          setCurrentScreen('list');
+          return null;
+        }
+        return (
+          <ClinicalNoteReviewScreen
+            noteType={scratchpadNoteType}
+            note={scratchpadNote}
+            patient={selectedPatient}
+            strokes={scratchpadStrokes}
+            onConfirmed={handleNoteConfirmed}
+            onEditScribble={handleEditScribble}
             onBack={handleBackToDetail}
           />
         );

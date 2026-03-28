@@ -21,7 +21,8 @@ const PatientDetailScreen: React.FC<{
     onStartScribing: () => void;
     onWriteNote: () => void;
     onDischarge: () => void;
-}> = ({ patient, onBack, onStartScribing, onWriteNote, onDischarge }) => {
+    onStartScribbling: () => void;
+}> = ({ patient, onBack, onStartScribing, onWriteNote, onDischarge, onStartScribbling }) => {
     const handleDischarge = () => {
         if (window.confirm(`Discharge ${patient.name}?\n\nThis will remove them from the ward list. The clinical record is preserved.`)) {
             onDischarge();
@@ -68,13 +69,13 @@ const PatientDetailScreen: React.FC<{
                     Discharge
                 </button>
                 <button
-                    onClick={onWriteNote}
+                    onClick={onStartScribbling}
                     style={{
                         backgroundColor: COLORS.surface,
                         color: COLORS.brand,
                         border: `2px solid ${COLORS.brand}`,
                         borderRadius: '24px',
-                        padding: '11px 24px',
+                        padding: '11px 20px',
                         fontSize: '15px',
                         fontWeight: 600,
                         cursor: 'pointer',
@@ -86,7 +87,28 @@ const PatientDetailScreen: React.FC<{
                     onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = COLORS.brandSubtle; }}
                     onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = COLORS.surface; }}
                 >
-                    <span style={{ fontSize: '18px' }}>✍️</span> Write Note
+                    <span style={{ fontSize: '18px' }}>✏️</span> Scribble
+                </button>
+                <button
+                    onClick={onWriteNote}
+                    style={{
+                        backgroundColor: COLORS.surface,
+                        color: COLORS.brand,
+                        border: `2px solid ${COLORS.brand}`,
+                        borderRadius: '24px',
+                        padding: '11px 20px',
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        transition: 'background-color 0.15s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = COLORS.brandSubtle; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = COLORS.surface; }}
+                >
+                    <span style={{ fontSize: '18px' }}>✍️</span> Type
                 </button>
                 <button
                     onClick={onStartScribing}
