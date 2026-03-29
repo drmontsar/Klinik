@@ -32,7 +32,7 @@ interface UseSOAPGeneratorResult {
 
 const useSOAPGenerator = (): UseSOAPGeneratorResult => {
   // SAFETY: AI-generated SOAP notes require mandatory clinician review
-  const providerRef = useRef(createAIProvider());
+  const providerRef = useRef(createAIProvider('SOAP_SCRIBING'));
   const [isGenerating, setIsGenerating] = useState(false);
   const [soapNote, setSoapNote] = useState<StructuredSOAPNote | null>(null);
   const [error, setError] = useState<string | null>(null);

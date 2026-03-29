@@ -16,20 +16,48 @@ export const API_BASE_URL = '/api';
 // AI Provider Configuration
 // ---------------------------------------------------------------------------
 
-/** Available AI providers for SOAP note generation */
-export type AIProviderType = 'mock' | 'openai' | 'claude' | 'ollama';
+/** Available AI providers */
+export type AIProviderType = 'mock' | 'openai' | 'claude' | 'ollama' | 'gemini';
 
-/** Active AI provider — change this to swap AI backends */
-export const AI_PROVIDER: AIProviderType = 'mock';
+/**
+ * Per-purpose AI provider configuration.
+ * Each clinical input modality can use a different AI backend simultaneously.
+ * Changing a single value here swaps that modality's AI without touching any other.
+ *
+ * Example: use Gemini for typed notes while keeping Claude for vision scribble:
+ *   TEXT_TO_NOTE: 'gemini'
+ *   VISION_SCRIBBLE: 'claude'
+ */
+export const AI_PROVIDERS = {
+  /** Voice scribing: transcript → SOAP note */
+  SOAP_SCRIBING: 'claude' as AIProviderType,
+  /** Text / dictation: typed or dictated text → structured note */
+  TEXT_TO_NOTE: 'claude' as AIProviderType,
+  /** Handwriting: scribble image → structured note (provider must support vision) */
+  VISION_SCRIBBLE: 'claude' as AIProviderType,
+} as const;
 
-/** API key for the active AI provider (set via environment or hardcode for dev) */
-export const AI_API_KEY = '';
+export type AIPurpose = keyof typeof AI_PROVIDERS;
+
+/**
+ * API keys per vendor.
+ * Leave a key empty to fall back to mock for any purpose using that vendor.
+ */
+export const AI_API_KEYS = {
+  /** Anthropic — https://console.anthropic.com */
+  anthropic: '',
+  /** OpenAI — https://platform.openai.com */
+  openai: '',
+  /** Google AI Studio — https://aistudio.google.com */
+  gemini: '',
+} as const;
 
 /** AI model identifiers per provider */
 export const AI_MODELS = {
     openai: 'gpt-4o',
     claude: 'claude-sonnet-4-20250514',
     ollama: 'llama3',
+    gemini: 'gemini-2.0-flash',
 } as const;
 
 /** Ollama server URL (for local AI) */

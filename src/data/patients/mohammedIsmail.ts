@@ -1,0 +1,130 @@
+import type { Patient } from '../../types/patient';
+
+/**
+ * Mohammed Ismail — Oesophageal carcinoma, pre-operative
+ * NEWS2: 4 — Nutrition optimisation, awaiting PET-CT staging
+ */
+export const mohammedIsmail: Patient = {
+  id: 'patient-003',
+  status: 'active',
+  name: 'Mohammed Ismail',
+  age: 72,
+  sex: 'Male',
+  hospitalNumber: 'MRN-2024-003',
+  location: 'Surgical Oncology Ward 3, Bed A-02',
+  consultant: 'Dr. Suresh Nair',
+  diagnosis: 'Carcinoma lower-third oesophagus — pre-operative assessment',
+  admissionDate: '2026-03-25',
+  dayOfStay: 4,
+  summary:
+    'Lower-third oesophageal carcinoma. Pre-op nutrition optimisation via NG feeding. PET-CT staging pending. Cardiology clearance requested for Ivor Lewis oesophagectomy.',
+  problems: [
+    'Oesophageal carcinoma — staging workup in progress',
+    'Moderate malnutrition — NG feeding commenced, target 1800 kcal/day',
+    'Background COPD — spirometry and anaesthetic review pending',
+    'Mild anaemia — Hb 9.8g/dL',
+  ],
+  // CLINICAL: NEWS2 = T→1 + HR→1 + SBP→1 + SpO2→1 + RR→0 + Alert→0 = 4
+  vitals: {
+    temperature: 38.2,
+    heartRate: 95,
+    systolicBP: 108,
+    diastolicBP: 70,
+    spO2: 94,
+    respirationRate: 18,
+    onSupplementalO2: false,
+    spO2Scale: 1,
+    consciousness: 'alert',
+    recordedAt: new Date('2026-03-29T06:00:00').toISOString(),
+  },
+  news2Score: 4,
+  medications: [
+    {
+      id: 'med-003-a',
+      name: 'Tab. Pantoprazole',
+      dose: '40mg',
+      route: 'oral',
+      frequency: 'BD',
+      isActive: true,
+      startDate: '2026-03-25',
+    },
+    {
+      id: 'med-003-b',
+      name: 'Inj. Ferric Carboxymaltose',
+      dose: '500mg',
+      route: 'IV',
+      frequency: 'OD (one dose)',
+      isActive: true,
+      startDate: '2026-03-26',
+    },
+    {
+      id: 'med-003-c',
+      name: 'Tab. Salbutamol inhaler',
+      dose: '100mcg',
+      route: 'inhaled',
+      frequency: 'QID PRN',
+      isActive: true,
+      startDate: '2026-03-25',
+    },
+    {
+      id: 'med-003-d',
+      name: 'Inj. Enoxaparin',
+      dose: '40mg',
+      route: 'SC',
+      frequency: 'OD',
+      isActive: true,
+      startDate: '2026-03-25',
+    },
+  ],
+  investigations: [
+    {
+      id: 'inv-003-a',
+      testName: 'Haemoglobin',
+      value: '9.8',
+      unit: 'g/dL',
+      normalRange: '13.5–17.5 g/dL',
+      isAbnormal: true,
+      reportedAt: '2026-03-26T09:00:00',
+    },
+    {
+      id: 'inv-003-b',
+      testName: 'PET-CT Staging',
+      value: 'Pending — scheduled 2026-04-02',
+      unit: '',
+      normalRange: '',
+      isAbnormal: false,
+      reportedAt: '2026-03-29T08:00:00',
+    },
+    {
+      id: 'inv-003-c',
+      testName: 'Spirometry (FEV1)',
+      value: '62% predicted',
+      unit: '%',
+      normalRange: '>80%',
+      isAbnormal: true,
+      reportedAt: '2026-03-27T11:00:00',
+    },
+    {
+      id: 'inv-003-d',
+      testName: 'Albumin',
+      value: '28',
+      unit: 'g/L',
+      normalRange: '35–50 g/L',
+      isAbnormal: true,
+      reportedAt: '2026-03-26T09:00:00',
+    },
+  ],
+  notes: [
+    {
+      id: 'note-003-a',
+      author: 'Dr. Suresh Nair',
+      type: 'ward-round',
+      content:
+        'Day 4 pre-op optimisation. Tolerating NG feed at 80ml/hr. Albumin 28g/L — nutrition team involved. PET-CT booked for 02-Apr. Cardiology review tomorrow. Anaemia partially corrected — Hb trending up from 8.4 to 9.8.',
+      isAIGenerated: false,
+      isApproved: true,
+      createdAt: '2026-03-29T07:45:00',
+    },
+  ],
+  amendments: [],
+};

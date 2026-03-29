@@ -1,17 +1,16 @@
 import type { Patient } from '../types/patient';
+import { DEMO_PATIENTS } from './patients/index';
 
 /**
- * Mock patient data — intentionally empty in production.
- * Real patient records are created by the doctor via the Admit Patient form
- * and persisted to localStorage via LocalPatientRepository (MOCK_MODE = false).
+ * Mock patient data used when MOCK_MODE = true.
+ * Each patient lives in its own file under src/data/patients/.
  *
- * This array can be populated with synthetic data for isolated dev/test runs
- * (set MOCK_MODE = true in constants/config.ts) but must never ship with
- * real patient details.
+ * TO SWAP TO REAL DATA:
+ * Set MOCK_MODE = false in constants/config.ts.
+ * LocalPatientRepository takes over — this file is never loaded.
  *
- * @clinical-note No patient data is seeded from code. All records are entered
- * by the treating doctor at the point of care.
+ * @clinical-note All data is synthetic. Never ship with real patient details.
  */
 
-// CLINICAL: Empty by design. Do not add patient records here.
-export const MOCK_PATIENTS: Patient[] = [];
+// CLINICAL: Demo patients only. No real patient records here.
+export const MOCK_PATIENTS: Patient[] = DEMO_PATIENTS;

@@ -22,13 +22,13 @@ Each section should be a string of clinical text.`;
 export class OllamaAIProvider implements AIProvider {
     readonly name = `Ollama ${AI_MODELS.ollama} (Local)`;
 
-    async generateSOAPNote(transcript: string, patientContext: string): Promise<SOAPNote> {
+    async generateClinicalNote(systemPrompt: string, userPrompt: string): Promise<string> {
         const response = await fetch(`${OLLAMA_BASE_URL}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 model: AI_MODELS.ollama,
-                prompt: `${SOAP_SYSTEM_PROMPT}\n\nPatient Context:\n${patientContext}\n\nTranscript:\n${transcript}\n\nGenerate a SOAP note as JSON.`,
+                prompt: `${systemPrompt}\n\n${userPrompt}`,
                 stream: false,
                 format: 'json',
             }),
@@ -40,7 +40,14 @@ export class OllamaAIProvider implements AIProvider {
 
         const data = await response.json();
         if (!data.response) throw new Error('Ollama returned empty response');
+        return data.response;
+    }
 
-        return JSON.parse(data.response) as SOAPNote;
+    async generateSOAPNote(transcript: string, patientContext: string): Promise<SOAPNote> {
+        const raw = await this.generateClinicalNote(
+            SOAP_SYSTEM_PROMPT,
+            `Patient Context:\n${patientContext}\n\nTranscript:\n${transcript}\n\nGenerate a SOAP note as JSON.`
+        );
+        return JSON.parse(raw) as SOAPNote;
     }
 }

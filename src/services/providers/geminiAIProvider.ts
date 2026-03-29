@@ -1,7 +1,10 @@
 /**
- * Claude AI Provider — generates StructuredSOAPNote via Anthropic Messages API.
- * THE ONLY FILE IN THE CODEBASE THAT IMPORTS FROM @anthropic-ai/sdk or calls
- * api.anthropic.com directly. All other files use the AIProvider interface.
+ * Gemini AI Provider — generates clinical notes via Google Gemini API.
+ *
+ * THIS IS THE ONLY FILE THAT KNOWS THE GOOGLE GEMINI API FORMAT.
+ * All other files use the AIProvider interface.
+ * Switching away from Gemini requires changing only this file and
+ * AI_PROVIDERS in config.ts.
  */
 
 import type { StructuredSOAPNote } from '../../types/clinical';
@@ -9,9 +12,8 @@ import type { AIProvider } from '../aiProvider';
 import { AI_API_KEYS, AI_MODELS } from '../../constants/config';
 import { getDoctorProfile } from '../doctorProfile';
 
-// CLINICAL: This system prompt structure is specified in CLAUDE.md and must not be paraphrased.
-// The specialty is injected at runtime from the doctor's profile so the AI is tuned
-// to the actual clinical context of the treating doctor.
+// CLINICAL: System prompt structure mirrors CLAUDE.md specification exactly.
+// Specialty is injected at runtime from the doctor's profile.
 function buildSOAPSystemPrompt(): string {
   const specialty = getDoctorProfile()?.specialty ?? 'general medicine';
   return `You are a clinical documentation assistant in an Indian ${specialty} ward. Generate a structured clinical note from the consultation transcript provided.
@@ -69,37 +71,38 @@ No other text. No markdown. No backticks:
 }`;
 }
 
-export class ClaudeAIProvider implements AIProvider {
-  readonly name = `Claude ${AI_MODELS.claude}`;
+export class GeminiAIProvider implements AIProvider {
+  readonly name = `Gemini ${AI_MODELS.gemini}`;
 
   async generateClinicalNote(systemPrompt: string, userPrompt: string): Promise<string> {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${AI_MODELS.gemini}:generateContent?key=${AI_API_KEYS.gemini}`;
+
+    const response = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': AI_API_KEYS.anthropic,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: AI_MODELS.claude,
-        max_tokens: 2048,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userPrompt }],
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+        generationConfig: {
+          temperature: 0.3,
+          // Ask Gemini to return JSON directly where possible.
+          // Falls back to free text — caller always extracts via regex.
+          responseMimeType: 'application/json',
+        },
       }),
     });
 
     if (!response.ok) {
       throw new Error(
-        `Claude API error: ${response.status} ${response.statusText}. ` +
+        `Gemini API error: ${response.status} ${response.statusText}. ` +
         `Transcription saved — tap Retry or switch to typed note entry.`
       );
     }
 
     const data = await response.json();
-    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
-    if (!textBlock?.text) throw new Error('Claude returned empty response');
-    return textBlock.text;
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Gemini returned empty response');
+    return text;
   }
 
   async generateSOAPNote(
@@ -113,7 +116,7 @@ export class ClaudeAIProvider implements AIProvider {
 
     // Extract JSON — guard against markdown wrapping
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Could not extract JSON from Claude response');
+    if (!jsonMatch) throw new Error('Could not extract JSON from Gemini response');
     return JSON.parse(jsonMatch[0]) as StructuredSOAPNote;
   }
 }

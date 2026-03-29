@@ -5,7 +5,7 @@
 
 import type { StructuredSOAPNote } from '../../types/clinical';
 import type { AIProvider } from '../aiProvider';
-import { AI_API_KEY, AI_MODELS } from '../../constants/config';
+import { AI_API_KEYS, AI_MODELS } from '../../constants/config';
 import { getDoctorProfile } from '../doctorProfile';
 
 // CLINICAL: System prompt structure mirrors CLAUDE.md specification exactly.
@@ -39,24 +39,18 @@ Return ONLY valid JSON matching this exact structure. No other text. No markdown
 export class OpenAIProvider implements AIProvider {
   readonly name = `OpenAI ${AI_MODELS.openai}`;
 
-  async generateSOAPNote(
-    transcript: string,
-    patientContext: string
-  ): Promise<StructuredSOAPNote> {
+  async generateClinicalNote(systemPrompt: string, userPrompt: string): Promise<string> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${AI_API_KEY}`,
+        Authorization: `Bearer ${AI_API_KEYS.openai}`,
       },
       body: JSON.stringify({
         model: AI_MODELS.openai,
         messages: [
-          { role: 'system', content: buildSOAPSystemPrompt() },
-          {
-            role: 'user',
-            content: `Patient Context:\n${patientContext}\n\nTranscript:\n${transcript}\n\nGenerate the structured SOAP note as JSON.`,
-          },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt },
         ],
         temperature: 0.3,
         response_format: { type: 'json_object' },
@@ -70,7 +64,17 @@ export class OpenAIProvider implements AIProvider {
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content;
     if (!content) throw new Error('OpenAI returned empty response');
+    return content;
+  }
 
-    return JSON.parse(content) as StructuredSOAPNote;
+  async generateSOAPNote(
+    transcript: string,
+    patientContext: string
+  ): Promise<StructuredSOAPNote> {
+    const raw = await this.generateClinicalNote(
+      buildSOAPSystemPrompt(),
+      `Patient Context:\n${patientContext}\n\nTranscript:\n${transcript}\n\nGenerate the structured SOAP note as JSON.`
+    );
+    return JSON.parse(raw) as StructuredSOAPNote;
   }
 }

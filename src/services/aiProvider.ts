@@ -7,7 +7,7 @@
 import type { StructuredSOAPNote } from '../types/clinical';
 
 /**
- * Contract for AI-powered SOAP note generation.
+ * Contract for AI-powered clinical note generation.
  * Implementations: MockAIProvider, OpenAIProvider, ClaudeAIProvider, OllamaAIProvider
  */
 export interface AIProvider {
@@ -26,4 +26,17 @@ export interface AIProvider {
     transcript: string,
     patientContext: string
   ): Promise<StructuredSOAPNote>;
+
+  /**
+   * General-purpose text generation with a custom system prompt.
+   * Used by all note-type-aware services (scratchpad text, dictation).
+   * @param systemPrompt - The instruction prompt defining the output schema
+   * @param userPrompt - The clinical content to process (transcript, typed text)
+   * @returns Raw response text from the model (caller parses JSON)
+   * @throws Error if the API call fails
+   */
+  generateClinicalNote(
+    systemPrompt: string,
+    userPrompt: string
+  ): Promise<string>;
 }

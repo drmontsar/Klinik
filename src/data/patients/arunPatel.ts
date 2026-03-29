@@ -1,0 +1,141 @@
+import type { Patient } from '../../types/patient';
+
+/**
+ * Arun Patel — Post-gastrectomy Day 3, ICU stepdown
+ * NEWS2: 5 — Elderly, sundowning risk
+ */
+export const arunPatel: Patient = {
+  id: 'patient-008',
+  status: 'active',
+  name: 'Arun Patel',
+  age: 78,
+  sex: 'Male',
+  hospitalNumber: 'MRN-2024-008',
+  location: 'Surgical Oncology Ward 3, Bed B-01',
+  consultant: 'Dr. Suresh Nair',
+  diagnosis: 'Carcinoma stomach — post-distal gastrectomy + D2 lymphadenectomy Day 3',
+  admissionDate: '2026-03-26',
+  dayOfStay: 3,
+  summary:
+    'Post-gastrectomy Day 3, stepped down from ICU this morning. Haemodynamically stable. Elderly — confusion episodes overnight (sundowning). Jejunostomy feeds commenced. Pain controlled.',
+  problems: [
+    'Post-distal gastrectomy Day 3 — ICU stepdown this morning',
+    'Delirium (sundowning) — 2 episodes overnight, reorientation measures in place',
+    'Jejunostomy feeding — commenced at 30ml/hr, target 60ml/hr',
+    'Background hypertension and type 2 diabetes — medications adjusted peri-op',
+    'DVT risk — Enoxaparin and TED stockings',
+  ],
+  // CLINICAL: NEWS2 = T→1 + HR→1 + SBP→2 + SpO2→1 + RR→0 + Alert→0 = 5
+  // Note: Alert score 0 — patient is orientated during daytime assessment
+  vitals: {
+    temperature: 38.2,
+    heartRate: 104,
+    systolicBP: 100,
+    diastolicBP: 64,
+    spO2: 95,
+    respirationRate: 20,
+    onSupplementalO2: false,
+    spO2Scale: 1,
+    consciousness: 'alert',
+    recordedAt: new Date('2026-03-29T06:00:00').toISOString(),
+  },
+  news2Score: 5,
+  medications: [
+    {
+      id: 'med-008-a',
+      name: 'Inj. Morphine',
+      dose: '2mg',
+      route: 'IV',
+      frequency: 'Q4H PRN (titrated)',
+      isActive: true,
+      startDate: '2026-03-26',
+    },
+    {
+      id: 'med-008-b',
+      name: 'Tab. Amlodipine',
+      dose: '5mg',
+      route: 'oral',
+      frequency: 'OD (via jejunostomy)',
+      isActive: true,
+      startDate: '2026-03-27',
+    },
+    {
+      id: 'med-008-c',
+      name: 'Inj. Regular Insulin',
+      dose: 'Sliding scale',
+      route: 'SC',
+      frequency: 'Q6H (glucose monitoring)',
+      isActive: true,
+      startDate: '2026-03-26',
+    },
+    {
+      id: 'med-008-d',
+      name: 'Inj. Enoxaparin',
+      dose: '40mg',
+      route: 'SC',
+      frequency: 'OD',
+      isActive: true,
+      startDate: '2026-03-26',
+    },
+    {
+      id: 'med-008-e',
+      name: 'Tab. Pantoprazole',
+      dose: '40mg',
+      route: 'oral',
+      frequency: 'OD (via jejunostomy)',
+      isActive: true,
+      startDate: '2026-03-26',
+    },
+  ],
+  investigations: [
+    {
+      id: 'inv-008-a',
+      testName: 'Haemoglobin',
+      value: '10.2',
+      unit: 'g/dL',
+      normalRange: '13.5–17.5 g/dL',
+      isAbnormal: true,
+      reportedAt: '2026-03-29T06:00:00',
+    },
+    {
+      id: 'inv-008-b',
+      testName: 'Serum Albumin',
+      value: '26',
+      unit: 'g/L',
+      normalRange: '35–50 g/L',
+      isAbnormal: true,
+      reportedAt: '2026-03-28T09:00:00',
+    },
+    {
+      id: 'inv-008-c',
+      testName: 'Fasting Blood Glucose',
+      value: '9.4',
+      unit: 'mmol/L',
+      normalRange: '3.9–5.5 mmol/L',
+      isAbnormal: true,
+      reportedAt: '2026-03-29T06:00:00',
+    },
+    {
+      id: 'inv-008-d',
+      testName: 'Chest X-ray',
+      value: 'Bilateral basal atelectasis — no pneumonia',
+      unit: '',
+      normalRange: '',
+      isAbnormal: true,
+      reportedAt: '2026-03-28T14:00:00',
+    },
+  ],
+  notes: [
+    {
+      id: 'note-008-a',
+      author: 'Dr. Suresh Nair',
+      type: 'ward-round',
+      content:
+        'Post-gastrectomy Day 3, transferred from ICU 06:30. Haemodynamically stable. Delirium — 2 brief episodes overnight, family informed. Jejunostomy feeding at 30ml/hr — increase to 60ml/hr if tolerated by evening. Glucose controlled on sliding scale. Physiotherapy for respiratory exercises.',
+      isAIGenerated: false,
+      isApproved: true,
+      createdAt: '2026-03-29T09:00:00',
+    },
+  ],
+  amendments: [],
+};

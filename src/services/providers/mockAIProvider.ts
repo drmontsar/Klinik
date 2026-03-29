@@ -9,6 +9,16 @@ import type { AIProvider } from '../aiProvider';
 export class MockAIProvider implements AIProvider {
   readonly name = 'Mock (Development)';
 
+  async generateClinicalNote(
+    _systemPrompt: string,
+    _userPrompt: string
+  ): Promise<string> {
+    // MOCK: returns a minimal valid JSON string — real mock data comes from
+    // MockScratchpadService / MockTextNoteService which bypass this method
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    return JSON.stringify({ note: 'mock' });
+  }
+
   async generateSOAPNote(
     transcript: string,
     patientContext: string

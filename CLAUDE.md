@@ -164,6 +164,12 @@ FHIR:                  HAPI FHIR on AWS ECS ap-south-1 (later)
 Auth:                  AWS Cognito ap-south-1 (later)
 Events:                AWS EventBridge ap-south-1 (later)
 
+Target device:  Moto Pad 60 Neo + Moto Pen
+                ₹17,999 — stylus included in box
+                Chrome browser — minimum version 90
+                4096 pressure levels — full PointerEvents support
+                Stock AAAA batteries before pilot deployment
+
 ## Vendor Independence — The Abstraction Layer Rule
 
 This is a non-negotiable architectural principle.

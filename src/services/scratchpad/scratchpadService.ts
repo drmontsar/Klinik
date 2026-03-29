@@ -13,10 +13,11 @@
 import type { OPInitialAssessment } from '../../types/OPInitialAssessment';
 import type { OPFollowUpAssessment } from '../../types/OPFollowUpAssessment';
 import type { StructuredSOAPNote } from '../../types/clinical';
-import { AI_API_KEY, AI_MODELS, AI_PROVIDER } from '../../constants/config';
+import { isVisionProviderConfigured } from '../createVisionAIProvider';
 import { INITIAL_ASSESSMENT_SYSTEM_PROMPT } from './prompts/initialAssessmentPrompt';
 import { FOLLOWUP_ASSESSMENT_SYSTEM_PROMPT } from './prompts/followUpAssessmentPrompt';
 import { SOAP_NOTE_SYSTEM_PROMPT } from './prompts/soapNotePrompt';
+import { createVisionAIProvider } from '../createVisionAIProvider';
 import { MockScratchpadService } from './scratchpadService.mock';
 
 // ---------------------------------------------------------------------------
@@ -71,12 +72,12 @@ export interface ScratchpadService {
 }
 
 // ---------------------------------------------------------------------------
-// Real implementation — Claude Vision API
+// Real implementation — routes through VisionAIProvider abstraction
 // ---------------------------------------------------------------------------
 
 /**
- * Builds the patient context string injected into every Claude Vision request.
- * SAFETY: allergies are always included so Claude can flag conflicts.
+ * Builds the user-turn prompt sent alongside the image.
+ * SAFETY: allergies are always included so the vision model can flag conflicts.
  */
 function buildPatientContextPrompt(ctx: ClinicalPatientContext): string {
   return `Patient context:
@@ -95,9 +96,13 @@ Return ONLY valid JSON matching the specified structure.
 No markdown. No backticks. No preamble. No explanation.`;
 }
 
-class ClaudeVisionScratchpadService implements ScratchpadService {
+class VisionScratchpadService implements ScratchpadService {
+  // ARCHITECTURE: uses VisionAIProvider — never calls a vendor API directly.
+  // Swap vision model by changing AI_PROVIDERS.VISION_SCRIBBLE in config.ts.
+  private visionProvider = createVisionAIProvider();
+
   /**
-   * Sends the scribble image to Claude Vision and parses the structured note.
+   * Sends the scribble image through the VisionAIProvider and parses the structured note.
    * @clinical-note The doctor always reviews AI output before it is saved.
    */
   async processScribble(
@@ -114,41 +119,13 @@ class ClaudeVisionScratchpadService implements ScratchpadService {
         ? FOLLOWUP_ASSESSMENT_SYSTEM_PROMPT
         : SOAP_NOTE_SYSTEM_PROMPT;
 
-    let response: Response;
+    let rawText: string;
     try {
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': AI_API_KEY,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-access': 'true',
-        },
-        body: JSON.stringify({
-          model: AI_MODELS.claude,
-          max_tokens: 2000,
-          system: systemPrompt,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'image',
-                  source: {
-                    type: 'base64',
-                    media_type: 'image/png',
-                    data: base64Image,
-                  },
-                },
-                {
-                  type: 'text',
-                  text: buildPatientContextPrompt(patientContext),
-                },
-              ],
-            },
-          ],
-        }),
-      });
+      rawText = await this.visionProvider.generateClinicalNoteFromImage(
+        base64Image,
+        systemPrompt,
+        buildPatientContextPrompt(patientContext)
+      );
     } catch {
       throw new KliniKScratchpadError(
         'NETWORK_ERROR',
@@ -157,20 +134,9 @@ class ClaudeVisionScratchpadService implements ScratchpadService {
       );
     }
 
-    if (!response.ok) {
-      throw new KliniKScratchpadError(
-        'API_ERROR',
-        `Could not read your notes. Check your connection and try again. (Error ${response.status})`,
-        response.status !== 401
-      );
-    }
-
-    const data = await response.json();
-    const textBlock = data.content?.find((b: { type: string }) => b.type === 'text');
-
     // SAFETY: Validate response before returning.
     // A malformed JSON response must never reach the confirmation screen.
-    if (!textBlock?.text) {
+    if (!rawText) {
       throw new KliniKScratchpadError(
         'EMPTY_RESPONSE',
         'Note could not be read. Please try again. Your scribble is preserved.',
@@ -179,7 +145,7 @@ class ClaudeVisionScratchpadService implements ScratchpadService {
     }
 
     // Extract JSON — guard against markdown wrapping
-    const jsonMatch = textBlock.text.match(/\{[\s\S]*\}/);
+    const jsonMatch = rawText.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       throw new KliniKScratchpadError(
         'PARSE_ERROR',
@@ -206,14 +172,14 @@ class ClaudeVisionScratchpadService implements ScratchpadService {
 
 /**
  * Returns the active scratchpad service implementation.
- * Uses mock when AI_PROVIDER is 'mock' or no API key is configured.
- * Change AI_PROVIDER in config.ts to switch implementations.
+ * Uses mock when AI_PROVIDERS.VISION_SCRIBBLE is 'mock' or has no API key.
+ * Change AI_PROVIDERS.VISION_SCRIBBLE in config.ts to switch implementations.
  */
 function createScratchpadService(): ScratchpadService {
-  if (AI_PROVIDER === 'mock' || !AI_API_KEY) {
+  if (!isVisionProviderConfigured()) {
     return new MockScratchpadService();
   }
-  return new ClaudeVisionScratchpadService();
+  return new VisionScratchpadService();
 }
 
 /** Singleton scratchpad service instance */

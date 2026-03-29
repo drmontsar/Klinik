@@ -1,0 +1,130 @@
+import type { Patient } from '../../types/patient';
+
+/**
+ * Vikram Singh — Gastric carcinoma, FLOT chemotherapy Cycle 2
+ * NEWS2: 3 — Day 2 of 3, nausea controlled
+ */
+export const vikramSingh: Patient = {
+  id: 'patient-005',
+  status: 'active',
+  name: 'Vikram Singh',
+  age: 61,
+  sex: 'Male',
+  hospitalNumber: 'MRN-2024-005',
+  location: 'Surgical Oncology Ward 3, Bed B-07',
+  consultant: 'Dr. Suresh Nair',
+  diagnosis: 'Carcinoma stomach (HER2+) — FLOT chemotherapy Cycle 2, Day 2 of 3',
+  admissionDate: '2026-03-28',
+  dayOfStay: 2,
+  summary:
+    'FLOT Cycle 2, Day 2. Nausea controlled with stepped-up antiemetics. Fatigue expected. Monitoring for chemotherapy toxicity — renal function and CBC daily.',
+  problems: [
+    'FLOT chemotherapy Cycle 2 — cisplatin, docetaxel, leucovorin, 5-FU infusion ongoing',
+    'Nausea and vomiting — antiemetics titrated, controlled',
+    'Fatigue — grade 1 CTCAE',
+    'Monitoring for peripheral neuropathy — neurotoxicity baseline documented',
+  ],
+  // CLINICAL: NEWS2 = T→1 + HR→1 + SBP→1 + SpO2→0 + RR→0 + Alert→0 = 3
+  vitals: {
+    temperature: 38.2,
+    heartRate: 92,
+    systolicBP: 108,
+    diastolicBP: 70,
+    spO2: 96,
+    respirationRate: 18,
+    onSupplementalO2: false,
+    spO2Scale: 1,
+    consciousness: 'alert',
+    recordedAt: new Date('2026-03-29T06:00:00').toISOString(),
+  },
+  news2Score: 3,
+  medications: [
+    {
+      id: 'med-005-a',
+      name: 'Inj. Docetaxel',
+      dose: '50mg/m²',
+      route: 'IV',
+      frequency: 'Day 1 of cycle (infusion)',
+      isActive: true,
+      startDate: '2026-03-28',
+    },
+    {
+      id: 'med-005-b',
+      name: 'Inj. 5-Fluorouracil',
+      dose: '2600mg/m²',
+      route: 'IV',
+      frequency: '24h infusion Day 1–2',
+      isActive: true,
+      startDate: '2026-03-28',
+    },
+    {
+      id: 'med-005-c',
+      name: 'Inj. Ondansetron',
+      dose: '8mg',
+      route: 'IV',
+      frequency: 'Q8H',
+      isActive: true,
+      startDate: '2026-03-28',
+    },
+    {
+      id: 'med-005-d',
+      name: 'Inj. Dexamethasone',
+      dose: '8mg',
+      route: 'IV',
+      frequency: 'OD (anti-emetic)',
+      isActive: true,
+      startDate: '2026-03-28',
+    },
+    {
+      id: 'med-005-e',
+      name: 'Tab. Aprepitant',
+      dose: '80mg',
+      route: 'oral',
+      frequency: 'OD Day 2–3',
+      isActive: true,
+      startDate: '2026-03-29',
+    },
+  ],
+  investigations: [
+    {
+      id: 'inv-005-a',
+      testName: 'CBC',
+      value: 'WBC 3.2 × 10⁹/L, Hb 10.6g/dL, Plt 142 × 10⁹/L',
+      unit: '',
+      normalRange: 'WBC 4–11, Hb >12',
+      isAbnormal: true,
+      reportedAt: '2026-03-29T06:00:00',
+    },
+    {
+      id: 'inv-005-b',
+      testName: 'Serum Creatinine',
+      value: '102',
+      unit: 'µmol/L',
+      normalRange: '62–106 µmol/L',
+      isAbnormal: false,
+      reportedAt: '2026-03-29T06:00:00',
+    },
+    {
+      id: 'inv-005-c',
+      testName: 'Electrolytes',
+      value: 'Na 138, K 3.6, Mg 0.7',
+      unit: 'mmol/L',
+      normalRange: 'Na 136–145, K 3.5–5.0',
+      isAbnormal: false,
+      reportedAt: '2026-03-29T06:00:00',
+    },
+  ],
+  notes: [
+    {
+      id: 'note-005-a',
+      author: 'Dr. Suresh Nair',
+      type: 'ward-round',
+      content:
+        'FLOT Cycle 2 Day 2. Tolerating infusion. Nausea controlled — aprepitant added. Mild neutropenia WBC 3.2 — no fever. 5-FU infusion on track, to complete 16:00 tomorrow. Neurotoxicity assessment unchanged from baseline.',
+      isAIGenerated: false,
+      isApproved: true,
+      createdAt: '2026-03-29T08:15:00',
+    },
+  ],
+  amendments: [],
+};
