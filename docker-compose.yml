@@ -11,5 +11,22 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  # Local-only S3-compatible storage. Never expose this port on the LAN.
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.18
+    command: mini -dir=/data
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: klinik-local
+      AWS_SECRET_ACCESS_KEY: klinik-local-secret
+      S3_BUCKET: klinik-chat
+    ports:
+      - "127.0.0.1:8333:8333"
+      # Filer browser bypasses patient access checks; local development only.
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - seaweed_data:/data
+
 volumes:
   postgres_data:
+  seaweed_data:

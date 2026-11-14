@@ -26,6 +26,26 @@ Development/test seeds use name-based addresses such as `bruce+wayne@klinik.com`
 
 The web app first submits only email/password to `/auth/login`, then verifies identity with authenticated `GET /auth/session`, returning `{ user, shift }` (`shift` is nullable). User roles and job roles come from the current database user, never from request JSON or browser storage. Duty doctors and nurses select their shift after authentication using `PATCH /auth/session` with `{ "shift": "morning" | "afternoon" | "night" }`. The selection is stored on the current bearer session and survives refresh. Consultants and other non-shift staff do not need shift selection; attempting to PATCH a shift for those roles returns 403. Missing/expired/disabled sessions return 401. Shift remains informational, not a clinical permission or a substitute for chart/session authorization. The login-time duty-doctor shift option remains supported for older clients.
 
+## Patient chat and private report attachments
+
+The conversation is keyed by **patient ID**, not admission ID. It remains available across later admissions, subject to the viewer's *current* patient-access permission. All endpoints require a bearer session; an inaccessible patient returns 404. Patient chat is staff-only and does not replace signed clinical notes, orders or handover.
+
+| Method | Path | Action |
+|--------|------|--------|
+| GET | `/patients/{patientId}/chat?limit=50&before={messageId}` | Messages newest first; use the last ID as the next-page cursor (1–100 items). |
+| GET | `/patients/{patientId}/chat/mention-candidates?q=tarun&limit=20&after={userId}` | Staff with current patient access. Omit `q` or send it empty for bare `@`; names filter as typed. Stable name/ID pagination: use the last returned ID as `after`; `limit` is 1–50 (default 10). Continue until a short page; no global staff-list exposure. |
+| POST | `/patients/{patientId}/chat` | Send `{ "text": "@Tarun please review", "mention_ids": ["<staff UUID>"] }`. |
+| PATCH | `/patients/{patientId}/chat/{messageId}` | Author edits with `{ "text": "...", "mention_ids": [], "expected_revision": 1 }`. |
+| GET | `/patients/{patientId}/chat/{messageId}/revisions` | Previous text and mentions; available to staff with patient access. |
+| POST | `/patients/{patientId}/chat/{messageId}/attachments` | Multipart form-data field `file`; author uploads within 15 minutes of sending. |
+| GET | `/patients/{patientId}/chat/attachments/{attachmentId}` | Authenticated, access-checked file **download** (not a public URL). |
+
+Message responses include `id`, `patient_id`, `author_id`, `author_name`, `body`, `revision`, `created_at`, `edited_at` (`null` until edited), `mentions` (`{ id, name }[]`), and `attachments` (`{ id, message_id, filename, content_type, byte_size, created_at }[]`). Display **Edited** when `edited_at` is set. Show `revisions` to viewers for clinical accountability. Only the author can edit text, for 15 minutes after posting; a stale `expected_revision` or expired edit returns 409. An attachment cannot be changed after upload: send a follow-up message to correct a report. There is no delete API.
+
+For @mentions, use the candidate picker and send the selected **user IDs**, not name strings; duplicates, disabled users or users without access to this patient return 422. Each new mention creates a `patient_chat_mention` notification in `/notifications` and immediately on `/events` while the app is open. Its payload contains only `patient_id`, `message_id`, and `author_id`, **not patient details or chat text**. Edits notify only *newly added* recipients; there is no mobile push notification. Render message text as plain text, not HTML. Poll an open thread to see new messages.
+
+File uploads accept JPEG, PNG, WebP, and PDF, up to **10 MiB** each. Send the message first, then upload its files. Use the returned attachment ID with the download endpoint; `storage_key` and bucket credentials are never returned. A PDF downloads rather than embedding in an inline viewer. Private S3-compatible storage is required for uploads (see README). Configure malware scanning, backups and retention before storing real patient reports in production.
+
 ## Flow
 
 ### Doctor
