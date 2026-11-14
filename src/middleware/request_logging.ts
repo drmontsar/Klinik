@@ -1,4 +1,5 @@
 import type { ErrorHandler, MiddlewareHandler } from 'hono';
+import { HTTPException } from 'hono/http-exception';
 import { routePath } from 'hono/route';
 import type { User } from '../db/queries/users';
 import { DomainError } from '../errors';
@@ -29,6 +30,7 @@ export const requestLogging: MiddlewareHandler<Env> = async (c, next) => {
 
 export const handleError: ErrorHandler<Env> = (error, c) => {
   if (error instanceof DomainError) return c.json({ error: error.code }, 409);
+  if (error instanceof HTTPException && error.status >= 400 && error.status < 500) return error.getResponse();
   logger.error(
     {
       requestId: c.get('requestId'),
