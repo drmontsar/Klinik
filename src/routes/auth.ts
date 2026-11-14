@@ -1,5 +1,6 @@
 import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import { z } from 'zod';
+import { config } from '../config';
 import { ErrorSchema, UserSchema } from '../contracts/common';
 import { authenticate, createSession, deleteSession, getSessionShift, selectSessionShift } from '../db/queries/auth';
 import { authMiddleware } from '../middleware/auth';
@@ -47,7 +48,7 @@ authRouter.openapi(
       return c.json({ error: 'invalid credentials' }, 401);
     }
     failures.delete(email);
-    if (!user.app_access_enabled) return c.json({ error: 'app access disabled' }, 403);
+    if (config.accessControlEnabled && !user.app_access_enabled) return c.json({ error: 'app access disabled' }, 403);
     if (shift && user.job_role !== 'duty_doctor')
       return c.json({ error: 'shift selection is only for duty doctors' }, 401);
     const token = await createSession(user.id, shift);

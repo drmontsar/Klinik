@@ -26,6 +26,11 @@ loadEnvFile();
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is not set');
 
+const accessControl = process.env.ACCESS_CONTROL ?? 'false';
+if (accessControl !== 'true' && accessControl !== 'false') {
+  throw new Error('ACCESS_CONTROL must be true or false');
+}
+
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
@@ -38,4 +43,5 @@ export const config = {
   port: Number(process.env.PORT) || 3001,
   nodeEnv,
   corsOrigins,
+  accessControlEnabled: accessControl === 'true',
 };

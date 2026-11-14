@@ -58,7 +58,8 @@ NODE_ENV=test bun run seed >/dev/null
 docker exec "$container" psql -U klinik -d klinik -v ON_ERROR_STOP=1 -c "UPDATE clinical.patients SET name = 'Ananya Sharma Updated' WHERE id = '13000000-0000-4000-8000-000000000001'" >/dev/null
 NODE_ENV=test bun run seed >/dev/null
 bun run test/test-data-integration.ts
-NODE_ENV=test bun run test/email-auth-integration.ts
+NODE_ENV=test ACCESS_CONTROL=true bun run test/email-auth-integration.ts
+NODE_ENV=test ACCESS_CONTROL=false bun run test/access-control-disabled-integration.ts
 NODE_ENV=test bun run test/fixtures/legacy/seed.ts >/dev/null
 NODE_ENV=test bun run test/integration/migrations.ts
 NODE_ENV=test PORT="$server_port" bun run dev >/tmp/klinik-security-server.log 2>&1 &
