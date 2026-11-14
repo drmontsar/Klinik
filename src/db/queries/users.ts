@@ -22,6 +22,7 @@ export type User = {
   last_seen_at: Date | null;
   created_at: Date;
   disabled_at: Date | null;
+  app_access_enabled: boolean;
 };
 
 export type DoctorPresence = User & { online: boolean };
@@ -79,6 +80,29 @@ export function listUsers(role?: User['role']): Promise<User[]> {
     SELECT u.*, c.email FROM staff.users u LEFT JOIN staff.user_credentials c ON c.user_id = u.id
     WHERE u.disabled_at IS NULL ORDER BY u.name
   `;
+}
+
+export async function setUserAppAccess(id: string, enabled: boolean, actorId: string): Promise<{ name: string } | 'not_found' | 'last_admin'> {
+  return db.begin(async (tx) => {
+    // Serialize administrator access changes so concurrent requests cannot lock out all admins.
+    await tx`SELECT pg_advisory_xact_lock(65820401)`;
+    const [user] = await tx<User[]>`SELECT * FROM staff.users WHERE id = ${id} AND disabled_at IS NULL FOR UPDATE`;
+    if (!user) return 'not_found';
+    if (!enabled && user.app_access_enabled && user.job_role === 'administrator') {
+      const [count] = await tx<{ count: number }[]>`
+        SELECT count(*)::int AS count FROM staff.users
+        WHERE job_role = 'administrator' AND disabled_at IS NULL AND app_access_enabled
+      `;
+      if (count.count <= 1) return 'last_admin';
+    }
+    if (user.app_access_enabled !== enabled) {
+      await tx`UPDATE staff.users SET app_access_enabled = ${enabled} WHERE id = ${id}`;
+      await tx`INSERT INTO clinical.audit_log (actor_user_id, action, record_table, record_id, before, after)
+        VALUES (${actorId}, 'set_app_access', 'staff.users', ${id},
+          ${tx.json({ app_access_enabled: user.app_access_enabled })}, ${tx.json({ app_access_enabled: enabled })})`;
+    }
+    return { name: user.name };
+  });
 }
 
 export async function disableUser(id: string): Promise<void> {

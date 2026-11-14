@@ -28,6 +28,7 @@ authRouter.openapi(
     responses: {
       200: { content: { 'application/json': { schema: AuthResponse } }, description: 'Authenticated' },
       401: { content: { 'application/json': { schema: ErrorSchema } }, description: 'Invalid credentials' },
+      403: { content: { 'application/json': { schema: ErrorSchema } }, description: 'App access disabled' },
       429: { content: { 'application/json': { schema: ErrorSchema } }, description: 'Too many attempts' },
     },
   }),
@@ -46,6 +47,7 @@ authRouter.openapi(
       return c.json({ error: 'invalid credentials' }, 401);
     }
     failures.delete(email);
+    if (!user.app_access_enabled) return c.json({ error: 'app access disabled' }, 403);
     if (shift && user.job_role !== 'duty_doctor')
       return c.json({ error: 'shift selection is only for duty doctors' }, 401);
     const token = await createSession(user.id, shift);
@@ -61,6 +63,7 @@ authRouter.openapi(createRoute({
   responses: {
     200: { content: { 'application/json': { schema: SessionResponse } }, description: 'Authenticated user and selected shift' },
     401: { content: { 'application/json': { schema: ErrorSchema } }, description: 'No session' },
+    403: { content: { 'application/json': { schema: ErrorSchema } }, description: 'App access disabled' },
   },
 }), async (c) => c.json({ user: c.get('user'), shift: await getSessionShift(c.req.header('Authorization')!.slice(7)) }, 200));
 
