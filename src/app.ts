@@ -11,6 +11,7 @@ import { admissionsRouter } from './routes/admissions';
 import { analyticsRouter } from './routes/analytics';
 import { authRouter } from './routes/auth';
 import { claimsRouter } from './routes/claims';
+import { chatRouter } from './routes/chat';
 import { consultantCareTransfersRouter } from './routes/consultant_care_transfers';
 import { consultantRoundsRouter } from './routes/consultant_rounds';
 import { contingenciesRouter } from './routes/contingencies';
@@ -79,6 +80,7 @@ export function makeApp() {
   app.route('/', medicationAdministrationRouter);
   app.route('/users', usersRouter);
   app.route('/patients', patientsRouter);
+  app.route('/patients', chatRouter);
   app.route('/opd', opdRouter);
   app.route('/forms', formsRouter);
   app.route('/ipass', ipassRouter);
