@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { getBunServer } from 'hono/bun';
 import { streamSSE } from 'hono/streaming';
+import { config } from '../config';
 import { getUserById, type User } from '../db/queries/users';
 import { subscribeNotifications } from '../services/notifications';
 
@@ -21,7 +22,7 @@ eventsRouter.get('/', (c) => {
     const userId = c.get('user').id;
     const unsubscribe = await subscribeNotifications(userId, async (notification) => {
       const user = await getUserById(userId);
-      if (!user || user.disabled_at || !user.app_access_enabled) {
+      if (!user || user.disabled_at || (config.accessControlEnabled && !user.app_access_enabled)) {
         stream.abort();
         return;
       }
