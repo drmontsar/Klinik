@@ -34,6 +34,10 @@ Start the server with `bun run dev`.
 
 ## Authentication
 
+Administrators can control whole-app access per staff user with `PUT /users/access` and JSON `{ "user_id": "<user UUID>", "enabled": false }` (or `true` to restore it). `GET /users` includes `app_access_enabled`, including for staff whose app access is off. Existing and new users default to enabled. A successful request returns HTTP 200 with `user_id`, `enabled`, and a confirmation `message`. Changes are audited; the last enabled administrator cannot be blocked through this endpoint. This setting is separate from disabling a staff record.
+
+A blocked user with a valid password receives HTTP 403 `{"error":"app access disabled"}` at login. Existing sessions receive the same response on protected requests, so the client can show a no-access page. Sessions are not deleted: an unexpired session works again when access is restored. A notification stream checks access before delivering each notification; requests already in progress cannot be recalled.
+
 Call `POST /auth/login` with `email` and `password`. Only enabled staff with credentials can log in; no public registration or OTP flow is available. Administrators create users with `POST /users` (`name`, `role`, `job_role`, optional contact `phone`, `email`, `password`) or set credentials for existing staff using `PUT /users/{id}/credentials` (`email`, `password`); resetting credentials revokes the user's sessions. On a fresh production database, run `bun run auth:bootstrap-admin` once with `ADMIN_EMAIL` and `ADMIN_PASSWORD` environment variables (minimum 12 characters). When upgrading an existing database with multiple administrators, also set `ADMIN_USER_ID`. The migration revokes old OTP sessions. Authenticated staff change their own password with `POST /users/me/password` (`current_password`, `new_password`), which also logs out existing sessions. Duty doctors may select `shift: "morning" | "afternoon" | "night"` on `/auth/login`; the choice is informational and does not restrict access. Shift times are 08:00–14:00, 14:00–20:00 and 20:00–08:00 (local hospital time). Send the returned token on protected routes as `Authorization: Bearer <token>`. Call `DELETE /auth/session` to revoke it.
 
 Development/test seeds use name-based addresses such as `bruce+wayne@klinik.com` with shared password `password` (never use these demo credentials in production or send mail to them). Login failures return the same generic error for unknown addresses and wrong passwords, with process-local throttling. Use HTTPS and shared gateway rate limiting before exposing production login; session tokens and request bodies are redacted from logs.
@@ -100,6 +104,13 @@ File uploads accept JPEG, PNG, WebP, and PDF, up to **10 MiB** each. Send the me
 **Roles:** `doctor`, `nurse`, `admin`
 
 Staff creation requires a non-empty name, unique email, and a password of at least 12 characters. Phone is optional contact information. A duplicate email or phone returns HTTP 409. Only the `administrator` job role has user-management permission.
+
+### Access Control
+
+| Method | Path | Action |
+|--------|------|--------|
+| GET | `/users` | List active staff and their app access status |
+| PUT | `/users/access` | Enable or block whole-app access (admin only) |
 
 ---
 

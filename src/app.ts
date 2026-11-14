@@ -109,6 +109,10 @@ export function makeApp() {
   app.route('/consultant-rounds', consultantRoundsRouter);
   app.route('/consultant-care-transfers', consultantCareTransfersRouter);
 
+  app.openAPIRegistry.registerComponent('securitySchemes', 'bearerAuth', {
+    type: 'http', scheme: 'bearer', bearerFormat: 'opaque session token',
+  });
+
   app.doc('/openapi.json', {
     openapi: '3.0.0',
     info: {

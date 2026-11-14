@@ -25,6 +25,7 @@ export const UserSchema = z.object({
   last_seen_at: z.string().nullable(),
   created_at: z.string(),
   disabled_at: z.string().nullable(),
+  app_access_enabled: z.boolean(),
 });
 
 export const DoctorPresenceSchema = UserSchema.extend({

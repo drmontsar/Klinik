@@ -72,6 +72,28 @@ try {
   assert.equal((await request(`/users/${user.id}/credentials`, {
     email: 'nila+test@klinik.com', password: 'longer-password',
   }, nurseToken, 'PUT')).status, 403);
+  const accessPath = '/users/access';
+  assert.equal((await request(accessPath, { user_id: user.id, enabled: false }, nurseToken, 'PUT')).status, 403);
+  assert.equal((await request(accessPath, { user_id: user.id, enabled: 'false' }, adminPayload.token, 'PUT')).status, 400);
+  assert.equal((await request(accessPath, { enabled: false }, adminPayload.token, 'PUT')).status, 400);
+  const revoked = await request(accessPath, { user_id: user.id, enabled: false }, adminPayload.token, 'PUT');
+  assert.equal(revoked.status, 200);
+  assert.deepEqual(await revoked.json(), { user_id: user.id, enabled: false, message: 'Access revoked for Nila Test' });
+  assert.equal((await session(dutyToken)).status, 403, 'Existing sessions must lose app access');
+  assert.equal((await app.request('/users', { headers: { Authorization: `Bearer ${dutyToken}` } })).status, 403);
+  assert.equal((await login(user.email, 'wrong')).status, 401, 'Blocked status must not be disclosed without a valid password');
+  const blockedLogin = await login(user.email, 'long-test-password');
+  assert.equal(blockedLogin.status, 403);
+  assert.equal((await blockedLogin.json() as { error: string }).error, 'app access disabled');
+  const users = await (await app.request('/users', { headers: { Authorization: `Bearer ${adminPayload.token}` } })).json() as { id: string; app_access_enabled: boolean }[];
+  assert.equal(users.find((entry) => entry.id === user.id)?.app_access_enabled, false);
+  assert.equal((await request(accessPath, { user_id: adminPayload.user.id, enabled: false }, adminPayload.token, 'PUT')).status, 409);
+  const granted = await request(accessPath, { user_id: user.id, enabled: true }, adminPayload.token, 'PUT');
+  assert.equal(granted.status, 200);
+  assert.deepEqual(await granted.json(), { user_id: user.id, enabled: true, message: 'Access granted for Nila Test' });
+  assert.equal((await session(dutyToken)).status, 200, 'Restoring access restores an unexpired session');
+  const [audit] = await db<{ count: number }[]>`SELECT count(*)::int AS count FROM clinical.audit_log WHERE record_id = ${user.id} AND action = 'set_app_access'`;
+  assert.equal(audit.count, 2);
   const reset = await request(`/users/${user.id}/credentials`, {
     email: 'nila+test@klinik.com', password: 'updated-test-password',
   }, adminPayload.token, 'PUT');

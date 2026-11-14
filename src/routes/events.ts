@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { getBunServer } from 'hono/bun';
 import { streamSSE } from 'hono/streaming';
-import type { User } from '../db/queries/users';
+import { getUserById, type User } from '../db/queries/users';
 import { subscribeNotifications } from '../services/notifications';
 
 type Variables = { user: User };
@@ -18,9 +18,15 @@ eventsRouter.get('/', (c) => {
         resolve();
       }),
     );
-    const unsubscribe = await subscribeNotifications(c.get('user').id, (notification) =>
-      stream.writeSSE({ data: JSON.stringify(notification) }),
-    );
+    const userId = c.get('user').id;
+    const unsubscribe = await subscribeNotifications(userId, async (notification) => {
+      const user = await getUserById(userId);
+      if (!user || user.disabled_at || !user.app_access_enabled) {
+        stream.abort();
+        return;
+      }
+      await stream.writeSSE({ data: JSON.stringify(notification) });
+    });
     let heartbeat: ReturnType<typeof setInterval> | undefined;
     try {
       if (aborted) return;

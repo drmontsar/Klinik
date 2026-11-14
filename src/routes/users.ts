@@ -11,6 +11,7 @@ import {
   listActiveDoctors,
   listUsers,
   setDoctorArea,
+  setUserAppAccess,
 } from '../db/queries/users';
 
 type Variables = { user: User };
@@ -52,7 +53,8 @@ usersRouter.openapi(
   createRoute({
     method: 'get',
     path: '/',
-    tags: ['Users'],
+    tags: ['Users', 'Access Control'],
+    security: [{ bearerAuth: [] }],
     request: {
       query: z.object({
         role: z.enum(['doctor', 'nurse', 'admin']).optional(),
@@ -191,6 +193,29 @@ usersRouter.openapi(
       return c.json({ error: 'not found' }, 404);
     }
     return c.json(user, 200);
+  },
+);
+
+usersRouter.openapi(
+  createRoute({
+    method: 'put', path: '/access', tags: ['Access Control'],
+    security: [{ bearerAuth: [] }],
+    request: { body: { required: true, content: { 'application/json': { schema: z.object({ user_id: z.string().uuid(), enabled: z.boolean() }) } } } },
+    responses: {
+      200: { content: { 'application/json': { schema: z.object({ user_id: z.string().uuid(), enabled: z.boolean(), message: z.string() }) } }, description: 'App access updated' },
+      403: { content: { 'application/json': { schema: ErrorSchema } }, description: 'Admin access required' },
+      404: { content: { 'application/json': { schema: ErrorSchema } }, description: 'User not found' },
+      409: { content: { 'application/json': { schema: ErrorSchema } }, description: 'Cannot block the last administrator' },
+    },
+  }),
+  async (c) => {
+    const actor = c.get('user');
+    if (!hasPermission(actor, 'users.manage')) return c.json({ error: 'admin access required' }, 403);
+    const { user_id, enabled } = c.req.valid('json');
+    const result = await setUserAppAccess(user_id, enabled, actor.id);
+    if (result === 'not_found') return c.json({ error: 'user not found' }, 404);
+    if (result === 'last_admin') return c.json({ error: 'cannot block the last administrator' }, 409);
+    return c.json({ user_id, enabled, message: `Access ${enabled ? 'granted' : 'revoked'} for ${result.name}` }, 200);
   },
 );
 
