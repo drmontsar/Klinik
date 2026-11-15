@@ -3,6 +3,12 @@
   "name": "klinik-qa-api",
   "main": "src/worker.ts",
   "keep_vars": true,
+  "preview_urls": false,
+  "vars": {
+    "ACCESS_CONTROL": "true",
+    "LOG_LEVEL": "info",
+    "NODE_ENV": "production"
+  },
   "compatibility_date": "2026-11-15",
   "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
   "define": { "__WORKERS__": "true" },

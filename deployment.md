@@ -7,7 +7,7 @@ The workflow in `.github/workflows/deploy-qa.yml` runs type-checking, unit tests
 Before the first push:
 
 - Add GitHub repository Actions secrets `CLOUDFLARE_API_TOKEN` (Workers edit permissions scoped to your account) and `CLOUDFLARE_ACCOUNT_ID` (from your Cloudflare account/Worker overview).
-- In the existing Cloudflare Worker, keep `DATABASE_URL` as a secret containing the Neon pooled URL. Set `NODE_ENV=production`, `LOG_LEVEL=info`, `ACCESS_CONTROL=true`, and `CORS_ORIGINS` to your frontend origin(s). `keep_vars` preserves dashboard variables; Worker secrets remain in Cloudflare.
+- In the existing Cloudflare Worker, keep `DATABASE_URL` as a secret containing the Neon pooled URL. Set `CORS_ORIGINS` in the dashboard to your frontend origin(s). `wrangler.jsonc` manages `NODE_ENV=production`, `LOG_LEVEL=info`, and `ACCESS_CONTROL=true`; change these in the file rather than the dashboard. `keep_vars` preserves other dashboard variables; Worker secrets remain in Cloudflare. Preview URLs are explicitly disabled; the normal `workers.dev` URL remains available.
 - Commit the Worker code and workflow, then push them to the `qa` branch. No GitHub-to-Cloudflare Builds connection is needed; GitHub Actions handles deployment.
 
 The workflow never migrates, resets or seeds Neon. It needs no Neon credentials in GitHub. Database-backed integration tests are not part of this pipeline. For a local bundle without deployment, run `bun run worker:build`; generated output is in `dist/worker/worker.js` and includes dependencies.
