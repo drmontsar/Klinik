@@ -383,14 +383,13 @@ export async function getAdmissionForUser(id: string, user: UserCtx): Promise<Ad
 
 type ActiveAdmissionRow = Admission & { patient_name: string; patient_dob: string; intake_pending?: boolean };
 
-const SEVERITY_ORDER = db`CASE a.severity WHEN 'unstable' THEN 0 WHEN 'watcher' THEN 1 ELSE 2 END`;
-
 // Scoped active admission list — scope drives doctor/nurse filtering
 export function listAdmissionsForUser(
   user: UserCtx,
   opts?: { scope?: 'mine' | 'open'; ward?: string },
 ): Promise<ActiveAdmissionRow[]> {
   const { scope, ward } = opts ?? {};
+  const SEVERITY_ORDER = db`CASE a.severity WHEN 'unstable' THEN 0 WHEN 'watcher' THEN 1 ELSE 2 END`;
   const base = db`
     SELECT a.*, p.name AS patient_name, p.dob AS patient_dob,
       (a.arrival_status = 'incoming' OR EXISTS (

@@ -1,0 +1,10 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "klinik-qa-api",
+  "main": "src/worker.ts",
+  "keep_vars": true,
+  "compatibility_date": "2026-11-15",
+  "compatibility_flags": ["nodejs_compat", "nodejs_compat_populate_process_env"],
+  "define": { "__WORKERS__": "true" },
+  "observability": { "enabled": true }
+}

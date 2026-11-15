@@ -278,7 +278,7 @@ export async function cancelOrder(id: string, actor_user_id: string): Promise<Or
 
 // Tasks
 
-const TASK_SELECT = db`
+const taskSelect = () => db`
   SELECT t.*, o.kind AS order_kind, o.payload AS order_payload
   FROM clinical.tasks t
   JOIN clinical.orders o ON o.id = t.order_id
@@ -288,6 +288,7 @@ export function listTasksByAdmission(
   admission_id: string,
   status?: Task['status'],
 ): Promise<Task[]> {
+  const TASK_SELECT = taskSelect();
   if (status) {
     return db<Task[]>`
       ${TASK_SELECT}
@@ -303,6 +304,7 @@ export function listTasksByAdmission(
 }
 
 export function listTasksByNurse(nurse_id: string, status?: Task['status']): Promise<Task[]> {
+  const TASK_SELECT = taskSelect();
   if (status) {
     return db<Task[]>`
       ${TASK_SELECT}

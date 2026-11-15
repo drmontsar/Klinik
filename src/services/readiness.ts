@@ -1,11 +1,11 @@
-import { readdir } from 'node:fs/promises';
 import { listAppliedMigrations } from '../db/queries/health';
+import migrationNames from '../db/migration-names.json';
 
 export async function isReady() {
   try {
-    const [files, applied] = await Promise.all([readdir('migrations'), listAppliedMigrations()]);
+    const applied = await listAppliedMigrations();
     const names = new Set(applied.map((row) => row.name));
-    return files.every((name) => !name.endsWith('.sql') || names.has(name));
+    return migrationNames.every((name) => names.has(name));
   } catch {
     return false;
   }

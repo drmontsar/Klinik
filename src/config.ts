@@ -1,27 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
-
-function loadEnvFile(fileName = '.env') {
-  if (!existsSync(fileName)) return;
-
-  for (const line of readFileSync(fileName, 'utf8').split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#')) continue;
-
-    const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/);
-    if (!match) continue;
-
-    const [, key, rawValue] = match;
-    const value = rawValue.trim();
-    const unwrapped =
-      (value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))
-        ? value.slice(1, -1)
-        : value;
-
-    if (!process.env[key]) process.env[key] = unwrapped;
-  }
-}
-
-loadEnvFile();
+// Bun loads .env locally. Workers populate process.env from dashboard bindings
+// with nodejs_compat_populate_process_env; never read deployment secrets from files.
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) throw new Error('DATABASE_URL is not set');
