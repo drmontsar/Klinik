@@ -1,6 +1,6 @@
 # QA frontend field reference index
 
-Generated from the actual frontend AST by `bun run qa:coverage`. This is a broad index of field/property references and input metadata, not a claim that every reference is a database field. Read the domain map and limitations in `qa-field-coverage.md`.
+Historical snapshot generated from the frontend AST. The generator has been removed. This is a broad index of field/property references and input metadata, not a claim that every reference is a database field. Read the domain map and limitations in `qa-field-coverage.md`.
 
 ### features/admissions/admission-checklist.tsx
 
