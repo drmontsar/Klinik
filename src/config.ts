@@ -31,6 +31,11 @@ if (accessControl !== 'true' && accessControl !== 'false') {
   throw new Error('ACCESS_CONTROL must be true or false');
 }
 
+const logLevel = process.env.LOG_LEVEL ?? 'info';
+if (logLevel !== 'info' && logLevel !== 'debug') {
+  throw new Error('LOG_LEVEL must be info or debug');
+}
+
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 const corsOrigins = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((origin) => origin.trim()).filter(Boolean)
@@ -42,6 +47,7 @@ export const config = {
   databaseUrl,
   port: Number(process.env.PORT) || 3001,
   nodeEnv,
+  logLevel,
   corsOrigins,
   accessControlEnabled: accessControl === 'true',
 };

@@ -15,7 +15,7 @@ export const requestLogging: MiddlewareHandler<Env> = async (c, next) => {
   try {
     await next();
   } finally {
-    logger.info(
+    logger.debug(
       {
         requestId,
         method: c.req.method,

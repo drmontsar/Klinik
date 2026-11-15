@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import { app } from '../src/app';
 import { db } from '../src/db';
+import { logger } from '../src/logger';
 
 assert.equal(process.env.DISPOSABLE_DATABASE, '1');
 const request = (path: string, body: unknown, token?: string, method = 'POST') => app.request(path, {
@@ -73,6 +74,9 @@ try {
     email: 'nila+test@klinik.com', password: 'longer-password',
   }, nurseToken, 'PUT')).status, 403);
   const accessPath = '/users/access';
+  const accessLogs: unknown[][] = [];
+  const originalInfo = logger.info;
+  logger.info = ((...args: unknown[]) => { accessLogs.push(args); }) as typeof logger.info;
   assert.equal((await request(accessPath, { user_id: user.id, enabled: false }, nurseToken, 'PUT')).status, 403);
   assert.equal((await request(accessPath, { user_id: user.id, enabled: 'false' }, adminPayload.token, 'PUT')).status, 400);
   assert.equal((await request(accessPath, { enabled: false }, adminPayload.token, 'PUT')).status, 400);
@@ -92,6 +96,18 @@ try {
   assert.equal(granted.status, 200);
   assert.deepEqual(await granted.json(), { user_id: user.id, enabled: true, message: 'Access granted for Nila Test' });
   assert.equal((await session(dutyToken)).status, 200, 'Restoring access restores an unexpired session');
+  assert.equal((await request(accessPath, { user_id: user.id, enabled: true }, adminPayload.token, 'PUT')).status, 200);
+  logger.info = originalInfo;
+  assert.equal(accessLogs.length, 2);
+  for (const [index, [fields, message]] of accessLogs.entries()) {
+    const log = fields as Record<string, unknown>;
+    assert.equal(message, 'app access changed');
+    assert.deepEqual({ ...log, requestId: undefined }, {
+      actorUserId: adminPayload.user.id, targetUserId: user.id, enabled: index === 1,
+      method: 'PUT', route: '/users/access', requestId: undefined,
+    });
+    assert.equal(typeof log.requestId, 'string');
+  }
   const [audit] = await db<{ count: number }[]>`SELECT count(*)::int AS count FROM clinical.audit_log WHERE record_id = ${user.id} AND action = 'set_app_access'`;
   assert.equal(audit.count, 2);
   const reset = await request(`/users/${user.id}/credentials`, {

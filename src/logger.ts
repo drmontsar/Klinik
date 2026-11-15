@@ -2,6 +2,7 @@ import pino from 'pino';
 import { config } from './config';
 
 export const logger = pino({
+  level: config.logLevel,
   redact: {
     paths: [
       'authorization',
@@ -21,17 +22,6 @@ export const logger = pino({
     ],
     censor: '[REDACTED]',
   },
-  transport:
-    config.nodeEnv === 'production'
-      ? undefined
-      : {
-          target: 'pino-pretty',
-          options: {
-            colorize: process.stdout.isTTY,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
-          },
-        },
 });
 
 export function errorDiagnostics(error: Error) {
