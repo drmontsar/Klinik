@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "klinik-qa-api",
+  "name": "synapse-qa",
   "main": "src/worker.ts",
   "keep_vars": true,
   "preview_urls": false,
