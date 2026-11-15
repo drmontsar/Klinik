@@ -82,7 +82,7 @@ export function listUsers(role?: User['role']): Promise<User[]> {
   `;
 }
 
-export async function setUserAppAccess(id: string, enabled: boolean, actorId: string): Promise<{ name: string } | 'not_found' | 'last_admin'> {
+export async function setUserAppAccess(id: string, enabled: boolean, actorId: string): Promise<{ name: string; changed: boolean } | 'not_found' | 'last_admin'> {
   return db.begin(async (tx) => {
     // Serialize administrator access changes so concurrent requests cannot lock out all admins.
     await tx`SELECT pg_advisory_xact_lock(65820401)`;
@@ -101,7 +101,7 @@ export async function setUserAppAccess(id: string, enabled: boolean, actorId: st
         VALUES (${actorId}, 'set_app_access', 'staff.users', ${id},
           ${tx.json({ app_access_enabled: user.app_access_enabled })}, ${tx.json({ app_access_enabled: enabled })})`;
     }
-    return { name: user.name };
+    return { name: user.name, changed: user.app_access_enabled !== enabled };
   });
 }
 

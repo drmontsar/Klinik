@@ -1,6 +1,8 @@
 import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import { z } from 'zod';
+import { routePath } from 'hono/route';
 import { hasPermission } from '../authorization';
+import { logger } from '../logger';
 import { DoctorPresenceSchema, ErrorSchema, IdParam, UserSchema } from '../contracts/common';
 import type { User } from '../db/queries/users';
 import { changePassword, setUserCredentials } from '../db/queries/auth';
@@ -14,7 +16,7 @@ import {
   setUserAppAccess,
 } from '../db/queries/users';
 
-type Variables = { user: User };
+type Variables = { user: User; requestId: string };
 
 const CreateUserBody = z.object({
   name: z.string().trim().min(1),
@@ -215,6 +217,10 @@ usersRouter.openapi(
     const result = await setUserAppAccess(user_id, enabled, actor.id);
     if (result === 'not_found') return c.json({ error: 'user not found' }, 404);
     if (result === 'last_admin') return c.json({ error: 'cannot block the last administrator' }, 409);
+    if (result.changed) logger.info({
+      actorUserId: actor.id, targetUserId: user_id, enabled,
+      requestId: c.get('requestId'), method: c.req.method, route: routePath(c, -1),
+    }, 'app access changed');
     return c.json({ user_id, enabled, message: `Access ${enabled ? 'granted' : 'revoked'} for ${result.name}` }, 200);
   },
 );

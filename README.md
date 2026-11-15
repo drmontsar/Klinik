@@ -1,10 +1,10 @@
 # KliniK backend
 
-GitHub Actions runs CI; deployment is not configured yet.
+See [deployment.md](deployment.md) for QA deployment setup and limitations.
 
 API and database for the KliniK doctor frontend in `../KL-2-doc`.
 
-The standalone service uses `src/main.ts` for Bun startup and `src/app.ts` for application construction. See [the architecture guide](docs/architecture.md) for module boundaries and reference patterns.
+The standalone service uses `src/main.ts` for Bun startup and `src/app.ts` for application construction. `src/worker.ts` exposes the same Hono application on Cloudflare Workers, using request-scoped PostgreSQL connections to Neon. See [the architecture guide](docs/architecture.md) for module boundaries and reference patterns.
 
 ```bash
 bun install
@@ -16,14 +16,13 @@ bun run dev
 
 The API runs at `http://localhost:3001`; OpenAPI docs are at `/docs`.
 PostgreSQL uses host port `5433` by default. If that port is occupied, set `POSTGRES_PORT` and the matching port in `DATABASE_URL` in `.env` before starting Docker (for example, use `5434` for both).
-Logs are formatted with `pino-pretty` locally and emitted as JSON when `NODE_ENV=production`; authentication and patient-sensitive fields are redacted.
+Set `LOG_LEVEL=info` (default) or `LOG_LEVEL=debug` in `.env`. Debug includes routine request logs; warnings and errors are logged at both levels. Application logs are emitted as JSON in every environment; authentication and patient-sensitive fields are redacted. One-off database scripts may also print plain-text status messages.
 Set `CORS_ORIGINS` to a comma-separated list of allowed frontend origins. Development defaults to `http://localhost:3000,http://localhost:5173`; production allows none until configured.
 
 ### Patient-chat report storage (local)
 
 `docker compose up -d` also starts **SeaweedFS** in single-node `weed mini` mode, persisting files in `seaweed_data`. The S3 API is at `127.0.0.1:8333` (opening it in a browser gives AccessDenied). To browse files, open the **local-only filer UI** at [http://localhost:8888/buckets/klinik-chat/](http://localhost:8888/buckets/klinik-chat/); uploaded reports are under `chat/`. This filer UI has **no patient authorization**: use it only with synthetic local data, never expose port 8888 on the LAN or in production. Browser/phone clients must use the authenticated API, not these storage ports. If PostgreSQL is already running in another worktree's Compose project, start just the storage service with `docker compose up -d seaweedfs` to avoid a port 5433 collision. Copy the S3 settings in `.env.example` into the worktree's local `.env` when running the API on the host. If the API also runs in this Compose network, use `S3_ENDPOINT=http://seaweedfs:8333` instead of `127.0.0.1`. Run `bun run migrate` to add patient-chat tables. See [API details](docs/api.md#patient-chat-and-private-report-attachments); `bun test/chat-integration.ts` checks seeded users, patient permissions, mentions, edits, and a real PDF round-trip against local SeaweedFS.
 
-On deployment, set `S3_BUCKET`, `S3_REGION`, and optionally `S3_ENDPOINT` (for an S3-compatible provider); use `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` or the host's standard AWS credential provider. Keep the bucket private; only the backend may read/write objects. Use HTTPS, restricted bucket credentials, backups, retention and malware scanning before handling real patient files. These local example credentials are **not** production secrets. Existing data lives outside this code worktree in the Docker volume; do not remove the volume unless you intend to delete the files.
 ## Clean test database
 
 If the database contains mixed old and new demo data, stop the API and run:

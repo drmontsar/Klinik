@@ -1,7 +1,27 @@
 import pino from 'pino';
 import { config } from './config';
 
+const sensitiveKeys = new Set([
+  'authorization', 'token', 'otp', 'password', 'password_hash', 'current_password',
+  'new_password', 'email', 'phone', 'patient', 'patient_name', 'body', 'payload',
+]);
+
+export function redactWorkerLog(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactWorkerLog);
+  if (!value || typeof value !== 'object') return value;
+  if (value instanceof Date) return value.toISOString();
+  return Object.fromEntries(Object.entries(value).map(([key, entry]) => [
+    key, sensitiveKeys.has(key.toLowerCase()) ? '[REDACTED]' : redactWorkerLog(entry),
+  ]));
+}
+
 export const logger = pino({
+  level: config.logLevel,
+  // Pino's Workers/browser build does not implement Node's redact option.
+  browser: {
+    asObject: true,
+    write: (entry) => console.log(JSON.stringify(redactWorkerLog(entry))),
+  },
   redact: {
     paths: [
       'authorization',
@@ -21,17 +41,6 @@ export const logger = pino({
     ],
     censor: '[REDACTED]',
   },
-  transport:
-    config.nodeEnv === 'production'
-      ? undefined
-      : {
-          target: 'pino-pretty',
-          options: {
-            colorize: process.stdout.isTTY,
-            translateTime: 'SYS:standard',
-            ignore: 'pid,hostname',
-          },
-        },
 });
 
 export function errorDiagnostics(error: Error) {
