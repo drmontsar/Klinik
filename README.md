@@ -38,25 +38,6 @@ The command is restricted to a local `klinik` database, the `klinik` database us
 
 **Test login: Bruce Wayne — `bruce+wayne@klinik.com` / `password`**. He is an enabled duty doctor. These shared demo credentials are for local/test fixtures only.
 
-## Local QA data
-
-This worktree's QA database is `klinik-qa-db-1` on **localhost:5434/klinik**. The original database on port 5433 and Neon are separate and are not modified by the QA scripts.
-
-```bash
-bun run seed:qa      # enrich the existing local fixture base; no reset required
-bun run qa:verify    # field/timeline/score checks plus live HTTP API smoke tests
-bun run qa:coverage  # regenerate DB-column coverage and frontend field-reference index
-bun run dev
-```
-
-`seed:qa` refuses remote hosts, other ports/databases, and production mode. It runs in one transaction, replaces the local observation/alert series, refreshes relative timestamps, and uses stable IDs to avoid duplicate QA records on reruns. It is not for preserving manually entered QA observations. For a fresh QA database, configure port 5434, run `bun run reset:demo`, then `bun run seed:qa`; the reset is destructive and expires existing sessions. Do not run the additive base fixture loader after QA enrichment because QA intentionally changes its canonical names and identity records.
-
-QA login: **`sameer+rao@klinik.com` / `password`**. Other existing accounts, such as `arjun+mehta@klinik.com`, keep their shared local password. These credentials must not be exposed publicly.
-
-The dataset includes six fictional inpatient scenarios, patient identity/contact/kin/coverage, six observations per admission with app-calculated NEWS2, initial/nursing assessments, notes, investigations, medication charts, fluid balance, weights, care plans, tasks, rounds, handovers, outpatient visits and billing. Nullable lifecycle fields remain empty when the corresponding action has not occurred; no signatures or report-file keys are fabricated.
-
-See [database field coverage and limitations](docs/qa-field-coverage.md) and [frontend field-reference inventory](docs/qa-ui-field-index.md). Investigation result panels cannot be populated solely by DB seeding: their current frontend adapter does not persist report updates. Catalogue synthetic metadata and existing frontend warnings are retained rather than misrepresenting fictional data as clinically validated.
-
 ## Portable test data
 
 The canonical dataset is in `test-data/`: `manifest.json` defines the file order and fixed snapshot time, while the other JSON files contain organization, staff, catalogue, patient, clinical, and workflow records. `bun run seed` applies migrations and inserts missing fixture records without deleting existing data. It works on a newly created local `klinik` database without running the old seed.
