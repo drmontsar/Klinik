@@ -56,7 +56,10 @@ try {
   const paths=['/ready','/patients','/admissions','/worklists/me','/opd/queue','/handover-sessions','/claims'];
   const [a]=await db`SELECT id,patient_id,unit_id FROM clinical.admissions WHERE assigned_doctor_id='11000000-0000-4000-8000-000000000001' ORDER BY id LIMIT 1`;
   assert(a,'Assigned admission available');
-  paths.push(`/patients/${a.patient_id}/identity`, `/dashboard/census-cards?ids=${a.id}`, `/dashboard/ward-summary?unit_id=${a.unit_id}`, `/admissions/${a.id}/header-summary`);
+  paths.push(`/patients/${a.patient_id}/identity`, `/dashboard/ward-summary?unit_id=${a.unit_id}`, `/admissions/${a.id}/header-summary`);
+  const census=await fetch(`${base}/dashboard/census-cards`,{method:'POST',headers:{authorization:`Bearer ${session.token}`,'content-type':'application/json'},body:JSON.stringify({ids:[a.id]})});
+  assert.equal(census.status,200,'POST census cards');
+  assert(Array.isArray(await census.json()),'Census response is an array');
   for(const suffix of ['','/vitals','/initial-assessment','/nursing-assessments','/nursing-tasks',`/fluid-entries?from=${encodeURIComponent(new Date(Date.now()-86400000).toISOString())}&to=${encodeURIComponent(new Date().toISOString())}`,'/notes','/orders','/tasks','/medication-schedules','/mar','/care-plan','/admission-checklist']) paths.push(`/admissions/${a.id}${suffix}`);
   for(const path of paths) {
     const response=await fetch(`${base}${path}`,{headers:{authorization:`Bearer ${session.token}`}});

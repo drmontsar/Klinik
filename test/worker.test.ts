@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { readdir } from 'node:fs/promises';
 import { app } from '../src/app';
-import { db, withDatabase, type Database } from '../src/db';
+import { createWorkerDatabase, db, withDatabase, type Database } from '../src/db';
 import { redactWorkerLog } from '../src/logger';
 import bunServer from '../src/main';
 import migrationNames from '../src/db/migration-names.json';
@@ -20,6 +20,17 @@ test('Workers handler serves public routes and retains authentication', async ()
   const protectedResponse = await worker.fetch(new Request('https://qa.example.com/admissions'));
   expect(protectedResponse.status).toBe(401);
   expect(await protectedResponse.json()).toEqual({ error: 'unauthorized' });
+});
+
+test('Worker connections load PostgreSQL types for UUID inputs and numeric array outputs', async () => {
+  const connection = createWorkerDatabase();
+  try {
+    expect(connection.options.fetch_types).toBe(true);
+    expect(connection.options.prepare).toBe(false);
+    expect(connection.options.max).toBe(1);
+  } finally {
+    await connection.end();
+  }
 });
 
 test('concurrent Worker requests use separate query clients, including methods', async () => {

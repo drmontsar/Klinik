@@ -15,7 +15,8 @@ export function createWorkerDatabase(): Database {
   return postgres(config.databaseUrl, {
     max: 1,
     prepare: false,
-    fetch_types: false,
+    // Array serializers/parsers require PostgreSQL type metadata, just as in Bun.
+    fetch_types: true,
     connect_timeout: 10,
   });
 }

@@ -76,6 +76,20 @@ const HeaderSummarySchema = z.object({
   }),
 });
 
+const CensusCardsSchema = z.array(
+  z.object({
+    admission_id: z.string().uuid(),
+    dob: z.string(),
+    sex: z.string().nullable(),
+    has_allergies: z.boolean(),
+    diagnosis: z.string().nullable(),
+    doctor_name: z.string().nullable(),
+    scores: z.array(z.number().int()),
+    open_alerts: z.number().int(),
+  }),
+);
+const CensusIdsSchema = z.array(z.string().uuid()).min(1).max(100);
+
 export const dashboardRouter = new OpenAPIHono<{ Variables: Variables }>();
 export const admissionHeaderRouter = new OpenAPIHono<{ Variables: Variables }>();
 
@@ -83,31 +97,21 @@ dashboardRouter.openapi(
   createRoute({
     method: 'get',
     path: '/census-cards',
+    deprecated: true,
     tags: ['Dashboard'],
     request: {
       query: z.object({
         ids: z
           .string()
           .transform((value) => value.split(','))
-          .pipe(z.array(z.string().uuid()).min(1).max(100)),
+          .pipe(CensusIdsSchema),
       }),
     },
     responses: {
       200: {
         content: {
           'application/json': {
-            schema: z.array(
-              z.object({
-                admission_id: z.string().uuid(),
-                dob: z.string(),
-                sex: z.string().nullable(),
-                has_allergies: z.boolean(),
-                diagnosis: z.string().nullable(),
-                doctor_name: z.string().nullable(),
-                scores: z.array(z.number().int()),
-                open_alerts: z.number().int(),
-              }),
-            ),
+            schema: CensusCardsSchema,
           },
         },
         description: 'Access-scoped patient census summaries',
@@ -115,6 +119,29 @@ dashboardRouter.openapi(
     },
   }),
   async (c) => c.json(await getCensusCards(c.req.valid('query').ids, c.get('user')), 200),
+);
+
+dashboardRouter.openapi(
+  createRoute({
+    method: 'post',
+    path: '/census-cards',
+    tags: ['Dashboard'],
+    request: {
+      body: {
+        required: true,
+        content: {
+          'application/json': { schema: z.object({ ids: CensusIdsSchema }) },
+        },
+      },
+    },
+    responses: {
+      200: {
+        content: { 'application/json': { schema: CensusCardsSchema } },
+        description: 'Access-scoped patient census summaries',
+      },
+    },
+  }),
+  async (c) => c.json(await getCensusCards(c.req.valid('json').ids, c.get('user')), 200),
 );
 
 dashboardRouter.openapi(

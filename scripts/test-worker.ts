@@ -59,6 +59,30 @@ try {
     assert(data);
     console.log(`workerd GET ${path}: 200`);
   }
+  const headers={authorization:`Bearer ${token}`,'content-type':'application/json'};
+  const ownAdmissions=await sql`SELECT id FROM clinical.admissions WHERE assigned_doctor_id='11000000-0000-4000-8000-000000000001' ORDER BY id`;
+  const ids=ownAdmissions.map(row=>row.id as string);
+  assert(ids.length>0 && ids.length<=100);
+  for(const batch of [[admission.id],ids,Array(100).fill(admission.id)]) {
+    const response=await fetch(`${base}/dashboard/census-cards`,{method:'POST',headers,body:JSON.stringify({ids:batch})});
+    assert.equal(response.status,200,'POST census cards under workerd');
+    const cards=await response.json() as {admission_id:string;scores:number[]}[];
+    assert(cards.length>0,'Authorized census cards returned');
+    for(const card of cards) {
+      assert(batch.includes(card.admission_id),'Census result must be requested');
+      assert(Array.isArray(card.scores),'PostgreSQL scores must parse as an array');
+      assert(card.scores.every(Number.isInteger),'Census scores must be numeric');
+    }
+  }
+  const legacy=await fetch(`${base}/dashboard/census-cards?ids=${admission.id}`,{headers});
+  assert.equal(legacy.status,200,'Legacy GET remains compatible during rollout');
+  for(const ids of [[],['not-a-uuid'],Array(101).fill(admission.id)]) {
+    const invalid=await fetch(`${base}/dashboard/census-cards`,{method:'POST',headers,body:JSON.stringify({ids})});
+    assert.equal(invalid.status,400,'Invalid census batches rejected');
+  }
+  const withoutAuth=await fetch(`${base}/dashboard/census-cards`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({ids:[admission.id]})});
+  assert.equal(withoutAuth.status,401,'POST census requires authentication');
+  console.log('workerd census: POST batches through 100 IDs, numeric arrays, legacy GET, validation and authentication passed');
   passed=true;
   console.log('Local Workers runtime smoke test passed. No deployment performed.');
 } catch(error) {

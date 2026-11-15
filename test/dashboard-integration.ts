@@ -24,6 +24,14 @@ async function get(path: string, token?: string): Promise<Response> {
   return fetch(`${baseUrl}${path}`, { headers: token ? { authorization: `Bearer ${token}` } : {} });
 }
 
+async function postCensus(ids: string[], token?: string): Promise<Response> {
+  return fetch(`${baseUrl}/dashboard/census-cards`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    body: JSON.stringify({ ids }),
+  });
+}
+
 const ids = await sql.begin(async (tx) => {
   const [department] = await tx<{ id: string }[]>`SELECT id FROM organization.departments ORDER BY id LIMIT 1`;
   const users = await tx<{ id: string; name: string }[]>`
@@ -149,17 +157,17 @@ const nurseResponse = await get(`/dashboard/ward-summary?unit_id=${ids.unit}`, n
 const nurseSummary = await nurseResponse.json() as Record<string, number | boolean>;
 assert(nurseResponse.ok && nurseSummary.news_critical === 1 && nurseSummary.news_warning === 0 && nurseSummary.claim_data_visible === false && nurseSummary.tpa_queries === 0, 'nurse summary scope or claim redaction incorrect');
 
-const anonymousCensus = await get(`/dashboard/census-cards?ids=${ids.admission}`);
+const anonymousCensus = await postCensus([ids.admission]);
 assert(anonymousCensus.status === 401, 'census allowed an unauthenticated request');
-const nurseCensus = await get(`/dashboard/census-cards?ids=${ids.admission},${ids.admission2}`, nurse);
+const nurseCensus = await postCensus([ids.admission, ids.admission2], nurse);
 assert(nurseCensus.ok && (await nurseCensus.json() as { admission_id: string }[]).map((item) => item.admission_id).join(',') === ids.admission, 'nurse census scope incorrect');
-const censusResponse = await get(`/dashboard/census-cards?ids=${ids.admission},${ids.admission2}`, doctor);
+const censusResponse = await postCensus([ids.admission, ids.admission2], doctor);
 const census = await censusResponse.json() as { admission_id: string; has_allergies: boolean; scores: number[]; open_alerts: number }[];
 assert(censusResponse.ok && census.length === 1 && census[0].admission_id === ids.admission, 'census must exclude admissions outside the user scope');
 assert(census[0].has_allergies && census[0].scores.join(',') === '8,0' && census[0].open_alerts === 2, 'census summary incorrect');
-const foreignCensus = await get(`/dashboard/census-cards?ids=${ids.admission}`, outside);
+const foreignCensus = await postCensus([ids.admission], outside);
 assert(foreignCensus.ok && (await foreignCensus.json() as unknown[]).length === 0, 'census leaked a foreign admission');
-const invalidCensus = await get('/dashboard/census-cards?ids=invalid', doctor);
+const invalidCensus = await postCensus(['invalid'], doctor);
 assert(invalidCensus.status === 400, 'census accepted invalid ids');
 
 const headerResponse = await get(`/admissions/${ids.admission}/header-summary`, doctor);
